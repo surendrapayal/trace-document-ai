@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TRACE — Review {{ contract.contract_id }}</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #f5f5f5; }
+    h1, h2 { color: #1a1a2e; }
+    h2 { margin-top: 2rem; border-bottom: 2px solid #1a1a2e; padding-bottom: 0.3rem; }
+    .card { background: white; padding: 1.5rem; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; width: 35%; color: #555; font-weight: 600; padding: 0.4rem 0; vertical-align: top; }
+    td { padding: 0.4rem 0; }
+    .score-high { color: #28a745; font-weight: bold; font-size: 1.2rem; }
+    .score-mid { color: #fd7e14; font-weight: bold; font-size: 1.2rem; }
+    .score-low { color: #dc3545; font-weight: bold; font-size: 1.2rem; }
+    .decision-form { background: white; padding: 1.5rem; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .decision-form label { display: block; margin-bottom: 0.3rem; font-weight: 600; }
+    .decision-form input, .decision-form textarea, .decision-form select {
+      width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;
+    }
+    .btn-approve { background: #28a745; color: white; padding: 0.6rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-right: 0.5rem; }
+    .btn-reject { background: #dc3545; color: white; padding: 0.6rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    .back { display: inline-block; margin-bottom: 1rem; color: #1a1a2e; text-decoration: none; }
+    .fee-table th, .fee-table td { border: 1px solid #eee; padding: 0.4rem 0.6rem; }
+    .fee-table th { background: #f0f0f0; }
+    .owner-block { border: 1px solid #eee; border-radius: 4px; padding: 1rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/queue">← Back to Queue</a>
+  <h1>Contract Review</h1>
+  <p><strong>Contract ID:</strong> <code>{{ contract.contract_id }}</code> &nbsp;|&nbsp;
+     <strong>Status:</strong> {{ contract.extraction_status }} &nbsp;|&nbsp;
+     <strong>Confidence:</strong>
+     {% set score = contract.confidence_score | float %}
+     <span class="{% if score >= 0.85 %}score-high{% elif score >= 0.60 %}score-mid{% else %}score-low{% endif %}">
+       {{ "%.0f" | format(score * 100) }}%
+     </span>
+  </p>
+
+  <h2>Processor Info</h2>
+  <div class="card">
+    <table>
+      {% set pi = contract.processor_info %}
+      <tr><th>Processor</th><td>{{ pi.processor_name }}</td></tr>
+      <tr><th>Sales Rep</th><td>{{ pi.sales_rep_name }} ({{ pi.sales_rep_role }})</td></tr>
+      <tr><th>Sales Rep Phone</th><td>{{ pi.sales_rep_phone }}</td></tr>
+      <tr><th>MID</th><td>{{ pi.mid }}</td></tr>
+      <tr><th>Atlas Token</th><td>{{ pi.atlas_token }}</td></tr>
+      <tr><th>SDR</th><td>{{ pi.sdr_name }}</td></tr>
+      <tr><th>Affiliate ID</th><td>{{ pi.affiliate_id }}</td></tr>
+      <tr><th>Generated On</th><td>{{ pi.generated_on }}</td></tr>
+    </table>
+  </div>
+
+  <h2>Company Information</h2>
+  <div class="card">
+    <table>
+      {% set ci = contract.company_information %}
+      <tr><th>Legal Name</th><td>{{ ci.merchant_legal_name }}</td></tr>
+      <tr><th>DBA Name</th><td>{{ ci.dba_name or '—' }}</td></tr>
+      <tr><th>Address</th><td>{{ ci.address }}, {{ ci.city_state_zip }}</td></tr>
+      <tr><th>Phone</th><td>{{ ci.phone }}</td></tr>
+      <tr><th>Website</th><td>{{ ci.website or '—' }}</td></tr>
+      <tr><th>Email</th><td>{{ ci.email or '—' }}</td></tr>
+      <tr><th>Primary Contact</th><td>{{ ci.primary_contact_name }} — {{ ci.primary_contact_phone }}</td></tr>
+      <tr><th>HIC Admin</th><td>{{ ci.hic_admin_name }} — {{ ci.hic_admin_email }}</td></tr>
+    </table>
+  </div>
+
+  <h2>Merchant Details</h2>
+  <div class="card">
+    <table>
+      {% set md = contract.merchant_details %}
+      <tr><th>Business Type</th><td>{{ md.business_type }}</td></tr>
+      <tr><th>Ownership Type</th><td>{{ md.ownership_type }}</td></tr>
+      <tr><th>Tax ID</th><td>{{ md.tax_id }}</td></tr>
+      <tr><th>Services</th><td>{{ md.services }}</td></tr>
+      <tr><th>New / Existing</th><td>{{ md.new_existing_business }}</td></tr>
+      <tr><th>Length in Business</th><td>{{ md.length_in_business }}</td></tr>
+      <tr><th>Terminals</th><td>{{ md.number_of_terminals }}</td></tr>
+      <tr><th>PCI Compliant</th><td>{{ 'Yes' if md.pci_compliant else 'No' }}</td></tr>
+    </table>
+  </div>
+
+  <h2>Credit Card Pricing</h2>
+  <div class="card">
+    <table>
+      {% set ccp = contract.credit_card_pricing %}
+      <tr><th>Billing Model</th><td><strong>{{ ccp.billing_model }}</strong></td></tr>
+      <tr><th>Annual Volume</th><td>{{ ccp.annual_volume }}</td></tr>
+      <tr><th>Avg Ticket</th><td>{{ ccp.avg_ticket }}</td></tr>
+      <tr><th>Settlement Type</th><td>{{ ccp.settlement_type }}</td></tr>
+    </table>
+
+    <h3>Card Rates</h3>
+    <table class="fee-table">
+      <tr>
+        <th>Card Type</th><th>Discount Rate</th><th>Discount CP</th><th>Discount CNP</th>
+        <th>Trans Fee Dial</th><th>Trans Fee IP</th><th>Trans Fee CP</th><th>Trans Fee CNP</th>
+        <th>Non-EMV Fee</th>
+      </tr>
+      {% for r in ccp.card_rates %}
+      <tr>
+        <td>{{ r.card_type }}</td>
+        <td>{{ r.discount_rate or '—' }}</td>
+        <td>{{ r.discount_rate_cp or '—' }}</td>
+        <td>{{ r.discount_rate_cnp or '—' }}</td>
+        <td>{{ r.trans_fee_dial or '—' }}</td>
+        <td>{{ r.trans_fee_ip or '—' }}</td>
+        <td>{{ r.trans_fee_cp or '—' }}</td>
+        <td>{{ r.trans_fee_cnp or '—' }}</td>
+        <td>{{ r.non_emv_assessment_fee or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Recurring Fees</h3>
+    <table class="fee-table">
+      <tr><th>Fee Name</th><th>Amount</th><th>Frequency</th></tr>
+      {% for f in ccp.recurring_fees %}
+      <tr><td>{{ f.fee_name }}</td><td>{{ f.amount }}</td><td>{{ f.frequency }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <h2>Processing Details</h2>
+  <div class="card">
+    <table>
+      {% set pd = contract.processing_details %}
+      <tr><th>Card Swiped %</th><td>{{ pd.card_swiped_pct }}</td></tr>
+      <tr><th>Keyed w/ Imprint %</th><td>{{ pd.keyed_with_imprint_pct or '—' }}</td></tr>
+      <tr><th>Face to Face %</th><td>{{ pd.face_to_face_pct }}</td></tr>
+      <tr><th>Inbound Telephone %</th><td>{{ pd.inbound_telephone_pct or '—' }}</td></tr>
+      <tr><th>Future Delivery %</th><td>{{ pd.future_delivery_volume_pct }}</td></tr>
+      <tr><th>Signature Obtained</th><td>{{ pd.signature_obtained }}</td></tr>
+      <tr><th>Consumer Charged</th><td>{{ pd.consumer_charged }}</td></tr>
+      <tr><th>Credit Card via Website</th><td>{{ 'Yes' if pd.credit_card_via_website else 'No' }}</td></tr>
+    </table>
+  </div>
+
+  <h2>Owners / Officers</h2>
+  <div class="card">
+    {% for o in contract.owners_officers %}
+    <div class="owner-block">
+      <table>
+        <tr><th>Name</th><td>{{ o.name }}</td></tr>
+        <tr><th>Title</th><td>{{ o.title }}</td></tr>
+        <tr><th>Ownership %</th><td>{{ o.ownership_pct }}</td></tr>
+        <tr><th>Address</th><td>{{ o.address }}, {{ o.city_state_zip }}</td></tr>
+        <tr><th>Email</th><td>{{ o.email }}</td></tr>
+        <tr><th>Home Phone</th><td>{{ o.home_phone }}</td></tr>
+        <tr><th>Cell Phone</th><td>{{ o.cell_phone }}</td></tr>
+        <tr><th>DOB</th><td>{{ o.dob }}</td></tr>
+        <tr><th>SSN Last 4</th><td>{{ o.ssn_last4 }}</td></tr>
+        <tr><th>DL Last 4</th><td>{{ o.drivers_license_last4 or '—' }}</td></tr>
+        <tr><th>Length at Address</th><td>{{ o.length_at_address }}</td></tr>
+        <tr><th>Citizenship</th><td>{{ o.citizenship }}</td></tr>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>Banking Information</h2>
+  <div class="card">
+    <table>
+      {% set bi = contract.banking_information %}
+      <tr><th>Bank Name</th><td>{{ bi.bank_name }}</td></tr>
+      <tr><th>Name on Account</th><td>{{ bi.name_on_account }}</td></tr>
+      <tr><th>Address</th><td>{{ bi.address }}</td></tr>
+      <tr><th>Phone</th><td>{{ bi.phone }}</td></tr>
+      <tr><th>Routing Number</th><td>{{ bi.routing_number }}</td></tr>
+      <tr><th>Account Number</th><td>{{ bi.account_number_last4 }}</td></tr>
+      <tr><th>Account Type</th><td>{{ bi.account_type }}</td></tr>
+      <tr><th>Funding Option</th><td>{{ bi.funding_option }}</td></tr>
+      <tr><th>Instant Deposit</th><td>{{ 'Yes' if bi.instant_deposit else 'No' }}</td></tr>
+    </table>
+  </div>
+
+  <h2>Review Decision</h2>
+  <div class="decision-form">
+    <form method="POST" action="/review/{{ contract.contract_id }}">
+      <label for="reviewer">Reviewer Name</label>
+      <input type="text" id="reviewer" name="reviewer" required placeholder="Your name">
+
+      <label for="decision">Decision</label>
+      <select id="decision" name="decision" required>
+        <option value="">— Select —</option>
+        <option value="Approved">Approve</option>
+        <option value="Rejected">Reject</option>
+      </select>
+
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" name="notes" rows="3" placeholder="Any corrections or comments..."></textarea>
+
+      <button type="submit" class="btn-approve" onclick="document.getElementById('decision').value='Approved'">✓ Approve</button>
+      <button type="submit" class="btn-reject" onclick="document.getElementById('decision').value='Rejected'">✗ Reject</button>
+    </form>
+  </div>
+
+</body>
+</html>

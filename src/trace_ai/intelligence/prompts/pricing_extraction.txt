@@ -1,0 +1,55 @@
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the CREDIT CARD PRICING section from the following Heartland contract text.
+
+Return a JSON object with exactly these fields:
+{
+  "annual_volume": "",
+  "avg_ticket": "",
+  "network": "",
+  "interchange_calculation": "",
+  "settlement_type": "",
+  "billing_model": "",
+  "card_rates": [
+    {
+      "card_type": "",
+      "discount_rate_cp": "",
+      "discount_rate_cnp": "",
+      "discount_rate": "",
+      "trans_fee_cp": "",
+      "trans_fee_cnp": "",
+      "trans_fee_dial": "",
+      "trans_fee_ip": "",
+      "non_emv_assessment_fee": ""
+    }
+  ],
+  "amex_details": {
+    "annual_volume": "",
+    "average_ticket": "",
+    "amex_program": "",
+    "amex_merchant_number": "",
+    "opt_out_of_marketing": null
+  },
+  "recurring_fees": [
+    {
+      "fee_name": "",
+      "amount": "",
+      "frequency": ""
+    }
+  ]
+}
+
+Rules:
+- billing_model: if interchange_calculation is "Interchange Plus" set to "IC++"
+- billing_model: if interchange_calculation is "Flat Rate" set to "Flat Rate"
+- Extract ALL rows from the recurring fees table including $0.00 fees
+- For IC++ contracts: use "discount_rate" field, leave "discount_rate_cp/cnp" as null
+- For Flat Rate contracts: use "discount_rate_cp" and "discount_rate_cnp", leave "discount_rate" as null
+- Preserve original dollar formatting e.g. "$0.2100" not "0.21"
+- Return null for any field not found — do not guess
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}

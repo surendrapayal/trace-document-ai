@@ -1,0 +1,30 @@
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the COMPANY INFORMATION section from the following Heartland contract text.
+
+Return a JSON object with exactly these fields:
+{
+  "merchant_legal_name": "",
+  "dba_name": "",
+  "address": "",
+  "city_state_zip": "",
+  "phone": "",
+  "website": "",
+  "email": "",
+  "primary_contact_name": "",
+  "primary_contact_phone": "",
+  "hic_admin_name": "",
+  "hic_admin_email": ""
+}
+
+Rules:
+- Use the LEGAL address block for merchant_legal_name and address
+- If no DBA name is present, set dba_name to null
+- Return null for any field not found in the document
+- Do not infer or guess values — only extract what is explicitly stated
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}

@@ -1,0 +1,32 @@
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the MERCHANT DETAILS section from the following Heartland contract text.
+
+Return a JSON object with exactly these fields:
+{
+  "business_type": "",
+  "ownership_type": "",
+  "tax_id": "",
+  "services": "",
+  "card_acceptance": "",
+  "statement_type": "",
+  "new_existing_business": "",
+  "length_in_business": "",
+  "number_of_terminals": null,
+  "deposit_method": "",
+  "dispute_letter_mailing": "",
+  "dispute_letter_electronic": "",
+  "pci_compliant": null
+}
+
+Rules:
+- pci_compliant: "Yes" -> true, "No" -> false
+- number_of_terminals: extract as integer
+- Return null for any field not found
+- Do not extract the compliance Yes/No questions — only the structured fields above
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}

@@ -1,0 +1,35 @@
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the BANKING INFORMATION section from the following Heartland contract text.
+This section is on page 3 of the contract.
+
+Return a JSON object with exactly these fields:
+{
+  "bank_name": "",
+  "name_on_account": "",
+  "address": "",
+  "phone": "",
+  "product": "",
+  "transfer_method": "",
+  "routing_number": "",
+  "account_number_last4": "",
+  "account_type": "",
+  "funding_option": "",
+  "instant_deposit": null
+}
+
+Rules:
+- bank_name: extract the full bank name as shown e.g. "FARMERS & MERCHANTS SAVINGS"
+- routing_number: extract the full routing number — this will be masked by DLP
+- account_number_last4: extract the masked value as shown e.g. "****4698"
+- account_type: e.g. "Checking", "Savings"
+- funding_option: e.g. "Standard"
+- instant_deposit: "Yes" -> true, "No" -> false, null if not present
+- transfer_method: e.g. "Both", "Debit Only", "Credit Only"
+- Return null for any field not found — do not guess
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}

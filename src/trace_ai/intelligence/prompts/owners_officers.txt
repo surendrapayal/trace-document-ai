@@ -1,0 +1,39 @@
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the OWNER/OFFICERS/CONTACTS section from the following Heartland contract text.
+This section is on page 3 of the contract.
+
+Return a JSON array where each element represents one owner or officer:
+[
+  {
+    "name": "",
+    "title": "",
+    "ownership_pct": "",
+    "address": "",
+    "city_state_zip": "",
+    "email": "",
+    "home_phone": "",
+    "cell_phone": "",
+    "dob": "",
+    "ssn_last4": "",
+    "drivers_license_last4": "",
+    "length_at_address": "",
+    "citizenship": ""
+  }
+]
+
+Rules:
+- Extract ALL owners and officers listed — there may be 1 or more
+- ownership_pct: include the % symbol e.g. "33%", "100%"
+- dob: extract as shown e.g. "7/31/1992" — this field will be masked by DLP
+- ssn_last4: extract the masked value as shown e.g. "***-**-6306"
+- drivers_license_last4: extract the masked value as shown e.g. "****8113"
+- title: e.g. "Owner", "Officer", "Director"
+- citizenship: e.g. "US Citizen"
+- Return null for any field not found — do not guess
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}

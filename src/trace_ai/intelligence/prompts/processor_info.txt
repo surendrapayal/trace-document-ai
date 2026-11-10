@@ -1,0 +1,29 @@
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the PROCESSOR HEADER INFORMATION from the following Heartland contract text.
+
+Return a JSON object with exactly these fields:
+{
+  "processor_name": "Heartland",
+  "sales_rep_name": "",
+  "sales_rep_role": "",
+  "sales_rep_phone": "",
+  "mid": "",
+  "atlas_token": "",
+  "sdr_name": "",
+  "affiliate_id": "",
+  "generated_on": ""
+}
+
+Rules:
+- processor_name is always "Heartland" for these contracts
+- MID label in document is "MID:" — extract the number after it
+- atlas Token label is "atlas Token:" — extract the number after it
+- generated_on is found at the bottom of page 1: "Generated On: MM/DD/YYYY"
+- Return null for any field not found
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}
