@@ -160,7 +160,7 @@ Calls Document AI and Cloud DLP to extract and sanitize contract content.
 
 | File | Responsibility |
 |------|----------------|
-| `document_ai_client.py` | Submits PDF to Document AI OCR + Form Parser. Returns full text, key-value pairs, and tables. |
+| `document_ai_client.py` | Submits PDF to Document AI Form Parser with `enable_native_pdf_parsing=True`. Handles both digital and scanned PDFs. Returns full text, key-value pairs, and tables. |
 | `dlp_client.py` | Calls Cloud DLP to detect and mask PII (SSN, DOB, routing numbers, etc.) before passing to Gemini. |
 | `extraction_models.py` | Pydantic models for OCR output — ExtractionResult, KeyValuePair, ExtractedTable. |
 
@@ -334,7 +334,7 @@ GCS_CURATED_PREFIX=curated
 GCS_KB_PREFIX=kb
 
 # Document AI
-DOCUMENT_AI_PROCESSOR_ID=
+DOCUMENT_AI_FORM_PROCESSOR_ID=
 DOCUMENT_AI_LOCATION=us
 
 # Vertex AI

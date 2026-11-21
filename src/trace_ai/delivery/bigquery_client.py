@@ -56,7 +56,7 @@ def write_audit_event(contract_id: str, stage: str, event: str, details: dict | 
         "timestamp": _now(),
     }
     _client.insert_rows_json(_table("audit_events"), [row])
-    log("delivery", contract_id, f"Audit event written: {event}", stage=stage)
+    log("delivery", contract_id, f"Audit event written: {event}", audit_stage=stage)
 
 
 def get_contract(contract_id: str) -> dict | None:

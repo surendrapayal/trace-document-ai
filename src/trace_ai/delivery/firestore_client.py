@@ -29,7 +29,7 @@ def write_audit_event(contract_id: str, stage: str, event: str, details: dict | 
         "details": details or {},
         "timestamp": _now(),
     })
-    log("delivery", contract_id, f"Audit event written: {event}", stage=stage)
+    log("delivery", contract_id, f"Audit event written: {event}", audit_stage=stage)
 
 
 def get_contract(contract_id: str) -> dict | None:

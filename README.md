@@ -34,7 +34,7 @@ Upload PDF → Document AI OCR → Cloud DLP (PII masking) → RAG context (Vect
   ```bash
   gcloud auth application-default login
   ```
-- Document AI processor created manually in GCP console (OCR + Form Parser)
+- Document AI Form Parser processor created manually in GCP console
 
 ---
 
@@ -79,8 +79,8 @@ cp .env.example .env
 
 Key values to fill in before proceeding:
 - `GCP_PROJECT_ID`, `GCP_REGION`
-- `GCS_RAW_BUCKET`, `GCS_PROCESSING_BUCKET`, `GCS_CURATED_BUCKET`, `GCS_KB_BUCKET`
-- `DOCUMENT_AI_PROCESSOR_ID`
+- `GCS_BUCKET`
+- `DOCUMENT_AI_FORM_PROCESSOR_ID`
 - `STORAGE_BACKEND` (`firestore` or `bigquery`)
 
 **5. Authenticate with GCP**
@@ -287,7 +287,7 @@ See `.env.example` for the full list. Key variables:
 |---|---|
 | `GCP_PROJECT_ID` | GCP project ID |
 | `GCP_REGION` | GCP region e.g. `us-central1` |
-| `DOCUMENT_AI_PROCESSOR_ID` | Processor ID from GCP console |
+| `DOCUMENT_AI_FORM_PROCESSOR_ID` | Form Parser processor ID from GCP console |
 | `VERTEX_GEMINI_MODEL` | Default: `gemini-1.5-pro` |
 | `VERTEX_VECTOR_SEARCH_INDEX_ID` | From `scripts/create_index.py` output |
 | `VERTEX_VECTOR_SEARCH_ENDPOINT_ID` | From `scripts/create_index.py` output |
