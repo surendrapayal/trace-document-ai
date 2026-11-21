@@ -1,5 +1,3 @@
-import io
-from pypdf import PdfReader
 from google.cloud import documentai
 from trace_ai.config import config
 from trace_ai.common.gcs_client import download_bytes
@@ -12,21 +10,12 @@ def _get_client() -> documentai.DocumentProcessorServiceClient:
     return documentai.DocumentProcessorServiceClient(client_options=opts)
 
 
-def _processor_name(processor_id: str) -> str:
+def _processor_name() -> str:
     return (
         f"projects/{config.GCP_PROJECT_ID}"
         f"/locations/{config.DOCUMENT_AI_LOCATION}"
-        f"/processors/{processor_id}"
+        f"/processors/{config.DOCUMENT_AI_FORM_PROCESSOR_ID}"
     )
-
-
-def _is_scanned(pdf_bytes: bytes) -> bool:
-    """Returns True if PDF has no embedded text layer (i.e. is a scanned image)."""
-    reader = PdfReader(io.BytesIO(pdf_bytes))
-    for page in reader.pages:
-        if page.extract_text():
-            return False
-    return True
 
 
 def _extract_text_from_layout(document: documentai.Document, layout) -> str:
@@ -45,14 +34,16 @@ def process_document(gcs_uri: str, contract_id: str) -> ExtractionResult:
     blob_name = "/".join(gcs_uri.replace("gs://", "").split("/")[1:])
     pdf_bytes = download_bytes(bucket_name, blob_name)
 
-    # Route to OCR processor for scanned PDFs, Form Parser for digital PDFs
-    use_ocr = _is_scanned(pdf_bytes) and bool(config.DOCUMENT_AI_OCR_PROCESSOR_ID)
-    processor_id = config.DOCUMENT_AI_OCR_PROCESSOR_ID if use_ocr else config.DOCUMENT_AI_FORM_PROCESSOR_ID
-    log("extraction", contract_id, f"PDF type: {'scanned' if use_ocr else 'digital'}, using processor: {processor_id}")
-
     client = _get_client()
     raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-    request = documentai.ProcessRequest(name=_processor_name(processor_id), raw_document=raw_document)
+    process_options = documentai.ProcessOptions(
+        ocr_config=documentai.OcrConfig(enable_native_pdf_parsing=True)
+    )
+    request = documentai.ProcessRequest(
+        name=_processor_name(),
+        raw_document=raw_document,
+        process_options=process_options,
+    )
     result = client.process_document(request=request)
     document = result.document
 
