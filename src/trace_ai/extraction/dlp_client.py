@@ -46,8 +46,12 @@ def _deidentify_config() -> dlp_v2.DeidentifyConfig | None:
 
 
 def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
+    if not config.DLP_ENABLED:
+        log("extraction", contract_id, "DLP masking disabled — skipping")
+        return text, []
+
     client = dlp_v2.DlpServiceClient()
-    parent = f"projects/{config.GCP_PROJECT_ID}/locations/global"
+    parent = f"projects/{config.GCP_PROJECT_ID}/locations/{config.DLP_LOCATION}"
     item = dlp_v2.ContentItem(value=text)
 
     deidentify_request = dlp_v2.DeidentifyContentRequest(

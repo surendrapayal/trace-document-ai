@@ -101,6 +101,8 @@ ExtractionResult
 
 | Variable | Default | Description |
 |---|---|---|
+| `DLP_ENABLED` | `true` | Set to `false` to skip PII masking entirely — original text is passed through unchanged |
+| `DLP_LOCATION` | `global` | DLP API location. `global` works everywhere; use a specific region (e.g. `us-central1`) for data residency requirements |
 | `DLP_INSPECT_TEMPLATE_NAME` | `""` (inline) | Full resource name of a stored GCP inspect template. When set, overrides inline `info_types` and `min_likelihood` |
 | `DLP_DEIDENTIFY_TEMPLATE_NAME` | `""` (inline) | Full resource name of a stored GCP deidentify template. When set, overrides inline `CharacterMaskConfig` |
 | `DLP_MASK_CHARACTER` | `*` | Character used to replace masked spans |

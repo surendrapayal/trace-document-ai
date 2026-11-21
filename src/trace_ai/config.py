@@ -16,6 +16,8 @@ class Config:
     DOCUMENT_AI_PROCESSOR_ID: str = os.environ["DOCUMENT_AI_PROCESSOR_ID"]
     DOCUMENT_AI_LOCATION: str = os.getenv("DOCUMENT_AI_LOCATION", "us")
 
+    DLP_ENABLED: bool = os.getenv("DLP_ENABLED", "true").lower() == "true"
+    DLP_LOCATION: str = os.getenv("DLP_LOCATION", "global")
     DLP_INSPECT_TEMPLATE_NAME: str = os.getenv("DLP_INSPECT_TEMPLATE_NAME", "")
     DLP_DEIDENTIFY_TEMPLATE_NAME: str = os.getenv("DLP_DEIDENTIFY_TEMPLATE_NAME", "")
     DLP_MASK_CHARACTER: str = os.getenv("DLP_MASK_CHARACTER", "*")
