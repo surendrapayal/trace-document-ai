@@ -12,6 +12,13 @@ from trace_ai.config import config
 client = bigquery.Client(project=config.GCP_PROJECT_ID)
 dataset_ref = f"{config.GCP_PROJECT_ID}.{config.BIGQUERY_DATASET}"
 
+# ── create dataset if it doesn't exist ───────────────────────────────────────
+
+dataset = bigquery.Dataset(dataset_ref)
+dataset.location = config.GCP_REGION
+client.create_dataset(dataset, exists_ok=True)
+print(f"Dataset ready: {dataset_ref}")
+
 # ── contracts table ───────────────────────────────────────────────────────────
 # Nested models (processor_info, company_information, etc.) are stored as
 # JSON strings — bigquery_client.py serialises them with json.dumps().

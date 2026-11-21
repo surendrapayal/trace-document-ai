@@ -101,7 +101,6 @@ gcloud storage buckets create gs://<GCS_KB_BUCKET> --location=<GCP_REGION>
 
 Skip this step if using `STORAGE_BACKEND=firestore`.
 ```bash
-bq mk --dataset <GCP_PROJECT_ID>:<BIGQUERY_DATASET>
 python scripts/create_bq_tables.py
 ```
 
