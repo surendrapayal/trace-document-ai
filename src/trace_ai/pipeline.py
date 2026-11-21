@@ -172,7 +172,7 @@ def main():
     source.add_argument("--local-pdf", help="Local PDF path — uploads to GCS raw then processes")
 
     parser.add_argument("--contract-id", help="Contract ID (auto-generated if not provided)")
-    parser.add_argument("--stage", choices=["ocr", "dlp", "rag", "extract", "normalize", "judge", "deliver"],
+    parser.add_argument("--stage", choices=["ingest", "ocr", "dlp", "rag", "extract", "normalize", "judge", "deliver"],
                         help="Run a single stage instead of the full pipeline")
     parser.add_argument("--input", dest="input_file", help="Path to JSON output from the previous stage")
     parser.add_argument("--rag-input", dest="rag_input_file", help="Path to RAG stage JSON output (required for --stage extract)")
@@ -209,7 +209,14 @@ def main():
         print("--contract-id is required for individual stages", file=sys.stderr)
         sys.exit(1)
 
-    if args.stage == "ocr":
+    if args.stage == "ingest":
+        if not args.local_pdf:
+            print("--local-pdf is required for --stage ingest", file=sys.stderr)
+            sys.exit(1)
+        from trace_ai.ingestion.upload_handler import upload_contract
+        _write(upload_contract(args.local_pdf, contract_id), args.output_file)
+
+    elif args.stage == "ocr":
         if not gcs_uri:
             print("--gcs-uri or --local-pdf is required for --stage ocr", file=sys.stderr)
             sys.exit(1)

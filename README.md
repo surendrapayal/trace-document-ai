@@ -160,10 +160,10 @@ Each stage can be run independently using `--stage`. Every stage writes its outp
 **Stage 0 — Ingestion (upload only, no `--stage` flag):**
 ```bash
 # Upload a single PDF — prints contract_id and GCS URI
-python -c "
-from trace_ai.ingestion.upload_handler import upload_contract
-print(upload_contract('docs/contract/your_contract.pdf'))
-"
+python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf
+
+# Save output to a file
+python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf --output s0_ingest.json
 
 # Or upload + run full pipeline in one command
 python -m trace_ai.pipeline --local-pdf docs/contract/your_contract.pdf
