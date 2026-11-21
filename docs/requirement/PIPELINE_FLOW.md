@@ -45,15 +45,22 @@ Each stage from 1–7 can be run individually via `--stage`. See [Running Indivi
 
 Pass `--stage <name>` to run a single stage. Each stage serializes its output to `--output` (JSON file) or stdout if omitted, and reads prior stage outputs via input flags.
 
-**Stage 0 — Ingestion** — use `--stage ingest` with `--local-pdf`:
+**Stage 0 — Ingestion** — use `--stage ingest` with `--local-pdf`. Accepts a single file or a folder:
 
 ```bash
-# Upload only — prints { contract_id, gcs_uri, file_size_bytes }
+# Upload a single PDF
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf
+
+# Upload all PDFs in a folder
+python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/
 
 # Save output to file
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf --output s0_ingest.json
+python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/ --output s0_ingest.json
 ```
+
+**Single file output**: `{ contract_id, gcs_uri, file_size_bytes }`  
+**Folder output**: `{ uploaded: [ { contract_id, gcs_uri, file_size_bytes }, ... ], total: N }`
 
 Note the `contract_id` and `gcs_uri` from the output — you need both for `--stage ocr`.
 

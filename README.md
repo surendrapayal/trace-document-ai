@@ -162,8 +162,12 @@ Each stage can be run independently using `--stage`. Every stage writes its outp
 # Upload a single PDF — prints contract_id and GCS URI
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf
 
+# Upload all PDFs in a folder
+python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/
+
 # Save output to a file
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf --output s0_ingest.json
+python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/ --output s0_ingest.json
 
 # Or upload + run full pipeline in one command
 python -m trace_ai.pipeline --local-pdf docs/contract/your_contract.pdf

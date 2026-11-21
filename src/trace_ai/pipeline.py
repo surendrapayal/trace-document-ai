@@ -9,7 +9,8 @@ Full pipeline usage:
     python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 
 Individual stage usage:
-    python -m trace_ai.pipeline --stage ocr       --gcs-uri gs://... --contract-id CNT-XXX --output stage1.json
+    python -m trace_ai.pipeline --stage ingest --local-pdf /path/to/contract.pdf
+    python -m trace_ai.pipeline --stage ingest --local-pdf /path/to/folder/
     python -m trace_ai.pipeline --stage dlp       --contract-id CNT-XXX --input stage1.json --output stage2.json
     python -m trace_ai.pipeline --stage rag       --contract-id CNT-XXX --input stage2.json --output stage3.json
     python -m trace_ai.pipeline --stage extract   --contract-id CNT-XXX --input stage2.json --rag-input stage3.json --output stage4.json
@@ -213,8 +214,13 @@ def main():
         if not args.local_pdf:
             print("--local-pdf is required for --stage ingest", file=sys.stderr)
             sys.exit(1)
-        from trace_ai.ingestion.upload_handler import upload_contract
-        _write(upload_contract(args.local_pdf, contract_id), args.output_file)
+        from trace_ai.ingestion.upload_handler import upload_contract, upload_contracts_from_folder
+        import os
+        if os.path.isdir(args.local_pdf):
+            results = upload_contracts_from_folder(args.local_pdf)
+            _write({"uploaded": results, "total": len(results)}, args.output_file)
+        else:
+            _write(upload_contract(args.local_pdf, contract_id), args.output_file)
 
     elif args.stage == "ocr":
         if not gcs_uri:
