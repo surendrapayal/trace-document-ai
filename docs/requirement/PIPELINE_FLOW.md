@@ -45,8 +45,20 @@ Each stage from 1–7 can be run individually via `--stage`. See [Running Indivi
 
 Pass `--stage <name>` to run a single stage. Each stage serializes its output to `--output` (JSON file) or stdout if omitted, and reads prior stage outputs via input flags.
 
+**Stage 0 — Ingestion** has no `--stage` flag — it is a file upload only. Run it standalone before `--stage ocr`:
+
 ```bash
-# Stage 1 — OCR
+# Upload only — prints { contract_id, gcs_uri, file_size_bytes }
+python -c "
+from trace_ai.ingestion.upload_handler import upload_contract
+print(upload_contract('docs/contract/your_contract.pdf'))
+"
+```
+
+Note the `contract_id` and `gcs_uri` from the output — you need both for `--stage ocr`.
+
+```bash
+# Stage 1 — OCR (use gcs_uri and contract_id from Stage 0 output above)
 python -m trace_ai.pipeline --stage ocr \
   --gcs-uri gs://<GCS_BUCKET>/raw/contracts/CNT-XXX/contract.pdf \
   --contract-id CNT-XXX --output s1_ocr.json

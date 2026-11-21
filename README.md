@@ -157,6 +157,18 @@ print(result)  # {"contract_id": "CNT-...", "gcs_uri": "gs://...", "file_size_by
 
 Each stage can be run independently using `--stage`. Every stage writes its output to `--output` (JSON file) or prints to stdout if omitted, and reads its dependencies from `--input` / `--rag-input` / `--masked-text-input` / `--judge-input`.
 
+**Stage 0 — Ingestion (upload only, no `--stage` flag):**
+```bash
+# Upload a single PDF — prints contract_id and GCS URI
+python -c "
+from trace_ai.ingestion.upload_handler import upload_contract
+print(upload_contract('docs/contract/your_contract.pdf'))
+"
+
+# Or upload + run full pipeline in one command
+python -m trace_ai.pipeline --local-pdf docs/contract/your_contract.pdf
+```
+
 ```bash
 # Stage 1 — OCR
 python -m trace_ai.pipeline --stage ocr \
