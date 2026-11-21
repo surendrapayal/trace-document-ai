@@ -31,6 +31,48 @@ class Config:
         "VERTEX_VECTOR_SEARCH_ENDPOINT_DISPLAY_NAME", "trace-kb-endpoint"
     )
 
+    # Index algorithm: "tree_ah" or "brute_force"
+    VERTEX_VECTOR_SEARCH_ALGORITHM: str = os.getenv("VERTEX_VECTOR_SEARCH_ALGORITHM", "tree_ah")
+
+    # Distance measure: "DOT_PRODUCT_DISTANCE", "SQUARED_L2_DISTANCE", "L1_DISTANCE", "COSINE_DISTANCE"
+    VERTEX_VECTOR_SEARCH_DISTANCE_MEASURE: str = os.getenv(
+        "VERTEX_VECTOR_SEARCH_DISTANCE_MEASURE", "DOT_PRODUCT_DISTANCE"
+    )
+
+    # Update method: "STREAM_UPDATE" or "BATCH_UPDATE"
+    VERTEX_VECTOR_SEARCH_UPDATE_METHOD: str = os.getenv(
+        "VERTEX_VECTOR_SEARCH_UPDATE_METHOD", "STREAM_UPDATE"
+    )
+
+    # Feature norm type: "UNIT_L2_NORM", "NONE"
+    VERTEX_VECTOR_SEARCH_FEATURE_NORM_TYPE: str = os.getenv(
+        "VERTEX_VECTOR_SEARCH_FEATURE_NORM_TYPE", "UNIT_L2_NORM"
+    )
+
+    # Shard size: "SHARD_SIZE_SMALL", "SHARD_SIZE_MEDIUM", "SHARD_SIZE_LARGE"
+    VERTEX_VECTOR_SEARCH_SHARD_SIZE: str = os.getenv(
+        "VERTEX_VECTOR_SEARCH_SHARD_SIZE", "SHARD_SIZE_MEDIUM"
+    )
+
+    # Tree-AH algorithm tuning
+    VERTEX_VECTOR_SEARCH_APPROXIMATE_NEIGHBORS_COUNT: int = int(
+        os.getenv("VERTEX_VECTOR_SEARCH_APPROXIMATE_NEIGHBORS_COUNT", "10")
+    )
+    VERTEX_VECTOR_SEARCH_LEAF_NODE_EMBEDDING_COUNT: int = int(
+        os.getenv("VERTEX_VECTOR_SEARCH_LEAF_NODE_EMBEDDING_COUNT", "1000")
+    )
+    VERTEX_VECTOR_SEARCH_LEAF_NODES_TO_SEARCH_PERCENT: int = int(
+        os.getenv("VERTEX_VECTOR_SEARCH_LEAF_NODES_TO_SEARCH_PERCENT", "1")
+    )
+
+    # Deployment sizing
+    VERTEX_VECTOR_SEARCH_MIN_REPLICAS: int = int(
+        os.getenv("VERTEX_VECTOR_SEARCH_MIN_REPLICAS", "1")
+    )
+    VERTEX_VECTOR_SEARCH_MAX_REPLICAS: int = int(
+        os.getenv("VERTEX_VECTOR_SEARCH_MAX_REPLICAS", "2")
+    )
+
     STORAGE_BACKEND: str = os.getenv("STORAGE_BACKEND", "firestore")  # "firestore" or "bigquery"
 
     FIRESTORE_COLLECTION_CONTRACTS: str = os.getenv("FIRESTORE_COLLECTION_CONTRACTS", "contracts")
