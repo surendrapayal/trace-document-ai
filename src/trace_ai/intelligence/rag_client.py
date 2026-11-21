@@ -1,5 +1,5 @@
 import vertexai
-from vertexai.preview.matching_engine import MatchingEngineIndexEndpoint
+from google.cloud.aiplatform import MatchingEngineIndexEndpoint
 from trace_ai.config import config
 from trace_ai.common.logging_client import log
 from trace_ai.common.gcs_client import download_bytes
