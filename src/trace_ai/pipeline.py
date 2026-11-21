@@ -206,10 +206,6 @@ def main():
         return
 
     # ── Individual stages ──
-    if not contract_id:
-        print("--contract-id is required for individual stages", file=sys.stderr)
-        sys.exit(1)
-
     if args.stage == "ingest":
         if not args.local_pdf:
             print("--local-pdf is required for --stage ingest", file=sys.stderr)
@@ -223,24 +219,36 @@ def main():
             _write(upload_contract(args.local_pdf, contract_id), args.output_file)
 
     elif args.stage == "ocr":
+        if not contract_id:
+            print("--contract-id is required for --stage ocr", file=sys.stderr)
+            sys.exit(1)
         if not gcs_uri:
             print("--gcs-uri or --local-pdf is required for --stage ocr", file=sys.stderr)
             sys.exit(1)
         _write(run_ocr(gcs_uri, contract_id), args.output_file)
 
     elif args.stage == "dlp":
+        if not contract_id:
+            print("--contract-id is required for --stage dlp", file=sys.stderr)
+            sys.exit(1)
         if not args.input_file:
             print("--input (OCR stage output) is required for --stage dlp", file=sys.stderr)
             sys.exit(1)
         _write(run_dlp(_read(args.input_file)["full_text"], contract_id), args.output_file)
 
     elif args.stage == "rag":
+        if not contract_id:
+            print("--contract-id is required for --stage rag", file=sys.stderr)
+            sys.exit(1)
         if not args.input_file:
             print("--input (DLP stage output) is required for --stage rag", file=sys.stderr)
             sys.exit(1)
         _write(run_rag(_read(args.input_file)["masked_text"], contract_id), args.output_file)
 
     elif args.stage == "extract":
+        if not contract_id:
+            print("--contract-id is required for --stage extract", file=sys.stderr)
+            sys.exit(1)
         if not args.input_file or not args.rag_input_file:
             print("--input (DLP stage output) and --rag-input (RAG stage output) are required for --stage extract", file=sys.stderr)
             sys.exit(1)
@@ -249,12 +257,18 @@ def main():
         _write(run_extract(masked_text, rag_context, contract_id), args.output_file)
 
     elif args.stage == "normalize":
+        if not contract_id:
+            print("--contract-id is required for --stage normalize", file=sys.stderr)
+            sys.exit(1)
         if not args.input_file:
             print("--input (extract stage output) is required for --stage normalize", file=sys.stderr)
             sys.exit(1)
         _write(run_normalize(_read(args.input_file), contract_id), args.output_file)
 
     elif args.stage == "judge":
+        if not contract_id:
+            print("--contract-id is required for --stage judge", file=sys.stderr)
+            sys.exit(1)
         if not args.input_file or not args.masked_text_input_file:
             print("--input (normalize stage output) and --masked-text-input (DLP stage output) are required for --stage judge", file=sys.stderr)
             sys.exit(1)
@@ -262,6 +276,9 @@ def main():
         _write(run_judge(masked_text, _read(args.input_file), contract_id), args.output_file)
 
     elif args.stage == "deliver":
+        if not contract_id:
+            print("--contract-id is required for --stage deliver", file=sys.stderr)
+            sys.exit(1)
         if not args.input_file or not args.judge_input_file:
             print("--input (normalize stage output) and --judge-input (judge stage output) are required for --stage deliver", file=sys.stderr)
             sys.exit(1)

@@ -1,16 +1,17 @@
-from google.cloud import aiplatform
+import vertexai
+from vertexai.preview.matching_engine import MatchingEngineIndexEndpoint
 from trace_ai.config import config
 from trace_ai.common.logging_client import log
 from trace_ai.common.gcs_client import download_bytes
 from trace_ai.intelligence.embeddings_client import embed_single
 
-aiplatform.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_VECTOR_SEARCH_LOCATION)
-
 
 def query(contract_text: str, contract_id: str, top_k: int = 5) -> str:
-    query_vector = embed_single(contract_text[:2000])
+    vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_VECTOR_SEARCH_LOCATION)
 
-    index_endpoint = aiplatform.MatchingEngineIndexEndpoint(
+    query_vector = embed_single(contract_text[:2000], task_type="RETRIEVAL_QUERY")
+
+    index_endpoint = MatchingEngineIndexEndpoint(
         index_endpoint_name=config.VERTEX_VECTOR_SEARCH_ENDPOINT_ID
     )
 
@@ -32,7 +33,7 @@ def query(contract_text: str, contract_id: str, top_k: int = 5) -> str:
         try:
             text = download_bytes(config.GCS_BUCKET, f"{config.GCS_KB_PREFIX}/chunks/{neighbor_id}.txt").decode("utf-8")
             chunks.append(text)
-        except Exception:
-            pass
+        except Exception as e:
+            log("intelligence", contract_id, f"Failed to fetch chunk {neighbor_id}", severity="WARNING", error=str(e))
 
     return "\n\n---\n\n".join(chunks)
