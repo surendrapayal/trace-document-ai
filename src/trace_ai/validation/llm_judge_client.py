@@ -7,7 +7,7 @@ from trace_ai.config import config
 from trace_ai.common.logging_client import log
 from trace_ai.validation.validation_models import ValidationResult, FieldScores
 
-_client = genai.Client(vertexai=True, project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
+_client = genai.Client(vertexai=True, project=config.GCP_PROJECT_ID, location=config.VERTEX_GEMINI_LOCATION)
 _PROMPT_PATH = Path(__file__).parent.parent / "intelligence" / "prompts" / "llm_judge.txt"
 _JSON_CONFIG = types.GenerateContentConfig(
     temperature=0.0,
