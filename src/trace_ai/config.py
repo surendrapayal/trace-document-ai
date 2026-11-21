@@ -14,7 +14,8 @@ class Config:
     GCS_CURATED_PREFIX: str = os.getenv("GCS_CURATED_PREFIX", "curated")
     GCS_KB_PREFIX: str = os.getenv("GCS_KB_PREFIX", "kb")
 
-    DOCUMENT_AI_PROCESSOR_ID: str = os.environ["DOCUMENT_AI_PROCESSOR_ID"]
+    DOCUMENT_AI_FORM_PROCESSOR_ID: str = os.environ["DOCUMENT_AI_FORM_PROCESSOR_ID"]
+    DOCUMENT_AI_OCR_PROCESSOR_ID: str = os.getenv("DOCUMENT_AI_OCR_PROCESSOR_ID", "")
     DOCUMENT_AI_LOCATION: str = os.getenv("DOCUMENT_AI_LOCATION", "us")
 
     DLP_ENABLED: bool = os.getenv("DLP_ENABLED", "true").lower() == "true"
