@@ -6,7 +6,7 @@ from vertexai.generative_models import GenerativeModel, GenerationConfig
 from trace_ai.config import config
 from trace_ai.common.logging_client import log
 
-vertexai.init(project=config.GCP_PROJECT_ID, location=config.GCP_REGION)
+vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _JSON_GENERATION_CONFIG = GenerationConfig(temperature=0.0, response_mime_type="application/json")

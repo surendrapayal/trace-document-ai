@@ -64,7 +64,7 @@ def _create_index() -> aiplatform.MatchingEngineIndex:
 
 
 def main():
-    aiplatform.init(project=config.GCP_PROJECT_ID, location=config.GCP_REGION)
+    aiplatform.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_VECTOR_SEARCH_LOCATION)
 
     print(f"\nCreating Vector Search index '{config.VERTEX_VECTOR_SEARCH_INDEX_DISPLAY_NAME}'...")
     print(f"Dimensions          : {config.VERTEX_EMBEDDING_DIMENSIONS}")

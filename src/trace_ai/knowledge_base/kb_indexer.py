@@ -4,7 +4,7 @@ from trace_ai.config import config
 from trace_ai.common.logging_client import log
 from trace_ai.intelligence.embeddings_client import embed
 
-aiplatform.init(project=config.GCP_PROJECT_ID, location=config.GCP_REGION)
+aiplatform.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_VECTOR_SEARCH_LOCATION)
 
 _CHUNK_SIZE = 500
 _CHUNK_OVERLAP = 50

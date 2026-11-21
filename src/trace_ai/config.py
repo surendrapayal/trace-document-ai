@@ -17,10 +17,12 @@ class Config:
     DOCUMENT_AI_LOCATION: str = os.getenv("DOCUMENT_AI_LOCATION", "us")
 
     VERTEX_GEMINI_MODEL: str = os.getenv("VERTEX_GEMINI_MODEL", "gemini-1.5-pro")
+    VERTEX_AI_LOCATION: str = os.getenv("VERTEX_AI_LOCATION", "us-central1")
     VERTEX_EMBEDDING_MODEL: str = os.getenv("VERTEX_EMBEDDING_MODEL", "text-embedding-004")
     VERTEX_EMBEDDING_DIMENSIONS: int = int(os.getenv("VERTEX_EMBEDDING_DIMENSIONS", "768"))
     VERTEX_VECTOR_SEARCH_INDEX_ID: str = os.environ["VERTEX_VECTOR_SEARCH_INDEX_ID"]
     VERTEX_VECTOR_SEARCH_ENDPOINT_ID: str = os.environ["VERTEX_VECTOR_SEARCH_ENDPOINT_ID"]
+    VERTEX_VECTOR_SEARCH_LOCATION: str = os.getenv("VERTEX_VECTOR_SEARCH_LOCATION", "us-central1")
     VERTEX_VECTOR_SEARCH_DEPLOYED_INDEX_ID: str = os.getenv(
         "VERTEX_VECTOR_SEARCH_DEPLOYED_INDEX_ID", "trace-kb-deployed"
     )
@@ -81,6 +83,7 @@ class Config:
     BIGQUERY_DATASET: str = os.getenv("BIGQUERY_DATASET", "trace_contracts")
     BIGQUERY_TABLE_CONTRACTS: str = os.getenv("BIGQUERY_TABLE_CONTRACTS", "contracts")
     BIGQUERY_TABLE_AUDIT: str = os.getenv("BIGQUERY_TABLE_AUDIT", "audit_events")
+    BIGQUERY_LOCATION: str = os.getenv("BIGQUERY_LOCATION", "US")
 
     CONFIDENCE_THRESHOLD_APPROVE: float = float(os.getenv("CONFIDENCE_THRESHOLD_APPROVE", "0.85"))
     CONFIDENCE_THRESHOLD_REVIEW: float = float(os.getenv("CONFIDENCE_THRESHOLD_REVIEW", "0.60"))

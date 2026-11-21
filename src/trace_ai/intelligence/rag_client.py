@@ -4,7 +4,7 @@ from trace_ai.common.logging_client import log
 from trace_ai.common.gcs_client import download_bytes
 from trace_ai.intelligence.embeddings_client import embed_single
 
-aiplatform.init(project=config.GCP_PROJECT_ID, location=config.GCP_REGION)
+aiplatform.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_VECTOR_SEARCH_LOCATION)
 
 
 def query(contract_text: str, contract_id: str, top_k: int = 5) -> str:

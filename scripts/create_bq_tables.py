@@ -15,7 +15,7 @@ dataset_ref = f"{config.GCP_PROJECT_ID}.{config.BIGQUERY_DATASET}"
 # ── create dataset if it doesn't exist ───────────────────────────────────────
 
 dataset = bigquery.Dataset(dataset_ref)
-dataset.location = config.GCP_REGION
+dataset.location = config.BIGQUERY_LOCATION
 client.create_dataset(dataset, exists_ok=True)
 print(f"Dataset ready: {dataset_ref}")
 

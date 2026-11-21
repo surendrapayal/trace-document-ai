@@ -7,7 +7,7 @@ from trace_ai.config import config
 from trace_ai.common.logging_client import log
 from trace_ai.validation.validation_models import ValidationResult, FieldScores
 
-vertexai.init(project=config.GCP_PROJECT_ID, location=config.GCP_REGION)
+vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
 
 _PROMPT_PATH = Path(__file__).parent.parent / "intelligence" / "prompts" / "llm_judge.txt"
 _JSON_CONFIG = GenerationConfig(temperature=0.0, response_mime_type="application/json")
