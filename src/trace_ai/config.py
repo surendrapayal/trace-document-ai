@@ -27,8 +27,9 @@ class Config:
     DLP_MIN_LIKELIHOOD: str = os.getenv("DLP_MIN_LIKELIHOOD", "LIKELY")
 
     VERTEX_GEMINI_MODEL: str = os.getenv("VERTEX_GEMINI_MODEL", "gemini-1.5-pro")
-    VERTEX_AI_LOCATION: str = os.getenv("VERTEX_AI_LOCATION", "us-central1")
+    VERTEX_GEMINI_LOCATION: str = os.getenv("VERTEX_GEMINI_LOCATION", "us-central1")
     VERTEX_EMBEDDING_MODEL: str = os.getenv("VERTEX_EMBEDDING_MODEL", "text-embedding-004")
+    VERTEX_EMBEDDING_LOCATION: str = os.getenv("VERTEX_EMBEDDING_LOCATION", "us-central1")
     VERTEX_EMBEDDING_DIMENSIONS: int = int(os.getenv("VERTEX_EMBEDDING_DIMENSIONS", "768"))
     VERTEX_VECTOR_SEARCH_INDEX_ID: str = os.environ["VERTEX_VECTOR_SEARCH_INDEX_ID"]
     VERTEX_VECTOR_SEARCH_ENDPOINT_ID: str = os.environ["VERTEX_VECTOR_SEARCH_ENDPOINT_ID"]

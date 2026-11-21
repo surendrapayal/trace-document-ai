@@ -198,7 +198,7 @@ ExtractionResult
 ## Stage 3 — RAG Context Retrieval
 
 **Module**: `intelligence/rag_client.py`  
-**GCP services**: Vertex AI Embeddings (`VERTEX_AI_LOCATION`), Vertex AI Vector Search (`VERTEX_VECTOR_SEARCH_LOCATION`)
+**GCP services**: Vertex AI Embeddings (`VERTEX_EMBEDDING_LOCATION`), Vertex AI Vector Search (`VERTEX_VECTOR_SEARCH_LOCATION`)
 
 **What it does**:
 1. Takes the first 2000 characters of `masked_text` as the query

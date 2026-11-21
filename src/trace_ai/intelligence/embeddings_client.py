@@ -4,7 +4,7 @@ from trace_ai.config import config
 
 
 def _model() -> TextEmbeddingModel:
-    vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
+    vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_EMBEDDING_LOCATION)
     return TextEmbeddingModel.from_pretrained(config.VERTEX_EMBEDDING_MODEL)
 
 
