@@ -187,8 +187,12 @@ def main():
     contract_id = args.contract_id
     gcs_uri = args.gcs_uri
 
-    if args.local_pdf:
+    if args.local_pdf and args.stage != "ingest":
+        import os
         from trace_ai.ingestion.upload_handler import upload_contract
+        if os.path.isdir(args.local_pdf):
+            print("--local-pdf is a directory; use --stage ingest for folder uploads", file=sys.stderr)
+            sys.exit(1)
         upload_result = upload_contract(args.local_pdf, contract_id)
         gcs_uri = upload_result["gcs_uri"]
         contract_id = upload_result["contract_id"]
