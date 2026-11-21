@@ -18,10 +18,17 @@ class Config:
 
     VERTEX_GEMINI_MODEL: str = os.getenv("VERTEX_GEMINI_MODEL", "gemini-1.5-pro")
     VERTEX_EMBEDDING_MODEL: str = os.getenv("VERTEX_EMBEDDING_MODEL", "text-embedding-004")
+    VERTEX_EMBEDDING_DIMENSIONS: int = int(os.getenv("VERTEX_EMBEDDING_DIMENSIONS", "768"))
     VERTEX_VECTOR_SEARCH_INDEX_ID: str = os.environ["VERTEX_VECTOR_SEARCH_INDEX_ID"]
     VERTEX_VECTOR_SEARCH_ENDPOINT_ID: str = os.environ["VERTEX_VECTOR_SEARCH_ENDPOINT_ID"]
     VERTEX_VECTOR_SEARCH_DEPLOYED_INDEX_ID: str = os.getenv(
         "VERTEX_VECTOR_SEARCH_DEPLOYED_INDEX_ID", "trace-kb-deployed"
+    )
+    VERTEX_VECTOR_SEARCH_INDEX_DISPLAY_NAME: str = os.getenv(
+        "VERTEX_VECTOR_SEARCH_INDEX_DISPLAY_NAME", "trace-kb-index"
+    )
+    VERTEX_VECTOR_SEARCH_ENDPOINT_DISPLAY_NAME: str = os.getenv(
+        "VERTEX_VECTOR_SEARCH_ENDPOINT_DISPLAY_NAME", "trace-kb-endpoint"
     )
 
     STORAGE_BACKEND: str = os.getenv("STORAGE_BACKEND", "firestore")  # "firestore" or "bigquery"
