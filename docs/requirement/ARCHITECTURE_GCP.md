@@ -11,7 +11,7 @@ flowchart TD
 
     %% ─── STAGE 1: INGEST ────────────────────────────────────────────
     subgraph INGEST["① INGEST LAYER"]
-        GCS_RAW[("GCS\nRaw Zone\n(Landing Bucket)")]
+        GCS_RAW[("GCS\nskumar_trace_ai/raw/\n(Landing Prefix)")]
         PIPELINE["trace_ai.pipeline\n(Python Orchestrator)"]
     end
 
@@ -19,7 +19,7 @@ flowchart TD
     subgraph EXTRACT["② EXTRACTION LAYER"]
         DOC_AI["Document AI\n(OCR + Form Parser)"]
         DLP["Cloud DLP\n(PII Detection & Masking)"]
-        GCS_PROC[("GCS\nProcessing Zone\n(OCR Artifacts)")]
+        GCS_PROC[("GCS\nskumar_trace_ai/processing/\n(OCR Artifacts)")]
     end
 
     %% ─── STAGE 3: INTELLIGENCE ──────────────────────────────────────
@@ -38,7 +38,7 @@ flowchart TD
     %% ─── STAGE 5: DELIVER ───────────────────────────────────────────
     subgraph DELIVER["⑤ DELIVER LAYER"]
         CLOUD_RUN["Cloud Run\n(FastAPI Review App)"]
-        GCS_OUT[("GCS\nCurated Zone\n(JSON Output)")]
+        GCS_OUT[("GCS\nskumar_trace_ai/curated/\n(JSON Output)")]
         STORAGE_BACKEND[("Firestore or BigQuery\n(Audit & Contract State)")]
     end
 
@@ -52,7 +52,7 @@ flowchart TD
 
     %% ─── KNOWLEDGE BASE (RAG SOURCE) ────────────────────────────────
     subgraph KB["📚 KNOWLEDGE BASE"]
-        GCS_KB[("GCS\nKB Bucket\n(Playbooks / Fee Dicts)")]
+        GCS_KB[("GCS\nskumar_trace_ai/kb/\n(Playbooks / Fee Dicts)")]
         EMBED["Vertex AI\nEmbeddings API"]
     end
 
@@ -180,11 +180,11 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    subgraph GCS["Google Cloud Storage"]
-        RAW[("Raw Zone\n• Original PDFs")]
-        PROC[("Processing Zone\n• OCR outputs\n• DLP artifacts")]
-        CURATED[("Curated Zone\n• Final validated\n  JSON outputs")]
-        KB[("KB Bucket\n• documents/\n• chunks/")]
+    subgraph GCS["Google Cloud Storage — skumar_trace_ai"]
+        RAW[("raw/\n• Original PDFs")]
+        PROC[("processing/\n• OCR outputs\n• DLP artifacts")]
+        CURATED[("curated/\n• Final validated\n  JSON outputs")]
+        KB[("kb/\n• documents/\n• chunks/")]
     end
 
     subgraph VECTOR["Vertex AI Vector Search"]

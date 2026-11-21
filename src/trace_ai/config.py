@@ -8,10 +8,11 @@ class Config:
     GCP_PROJECT_ID: str = os.environ["GCP_PROJECT_ID"]
     GCP_REGION: str = os.environ["GCP_REGION"]
 
-    GCS_RAW_BUCKET: str = os.environ["GCS_RAW_BUCKET"]
-    GCS_PROCESSING_BUCKET: str = os.environ["GCS_PROCESSING_BUCKET"]
-    GCS_CURATED_BUCKET: str = os.environ["GCS_CURATED_BUCKET"]
-    GCS_KB_BUCKET: str = os.environ["GCS_KB_BUCKET"]
+    GCS_BUCKET: str = os.environ["GCS_BUCKET"]
+    GCS_RAW_PREFIX: str = os.getenv("GCS_RAW_PREFIX", "raw")
+    GCS_PROCESSING_PREFIX: str = os.getenv("GCS_PROCESSING_PREFIX", "processing")
+    GCS_CURATED_PREFIX: str = os.getenv("GCS_CURATED_PREFIX", "curated")
+    GCS_KB_PREFIX: str = os.getenv("GCS_KB_PREFIX", "kb")
 
     DOCUMENT_AI_PROCESSOR_ID: str = os.environ["DOCUMENT_AI_PROCESSOR_ID"]
     DOCUMENT_AI_LOCATION: str = os.getenv("DOCUMENT_AI_LOCATION", "us")

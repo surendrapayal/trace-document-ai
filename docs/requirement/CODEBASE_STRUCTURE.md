@@ -148,7 +148,7 @@ Handles contract file validation and upload to GCS Raw Zone. Called separately b
 
 | File | Responsibility |
 |------|----------------|
-| `upload_handler.py` | Validates file type (PDF only), size (≤50MB). Uploads to GCS Raw Zone. Returns contract_id and GCS URI. |
+| `upload_handler.py` | Validates file type (PDF only), size (≤50MB). Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/`. Returns contract_id and GCS URI. |
 
 GCP Services used: `Google Cloud Storage`
 
@@ -228,7 +228,7 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 
 | File | Responsibility |
 |------|----------------|
-| `gcs_writer.py` | Serializes ContractRecord to JSON and writes to GCS Curated Zone. |
+| `gcs_writer.py` | Serializes ContractRecord to JSON and writes to `gs://<GCS_BUCKET>/<GCS_CURATED_PREFIX>/contracts/`. |
 | `storage_backend.py` | Factory — re-exports the correct backend functions based on `STORAGE_BACKEND` env var. |
 | `firestore_client.py` | Firestore implementation — upsert_contract, write_audit_event, get_contract, get_pending_review, update_review_decision. |
 | `bigquery_client.py` | BigQuery implementation — same 5-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
@@ -259,7 +259,7 @@ Indexes reference documents into Vertex AI Vector Search for RAG grounding.
 
 | File | Responsibility |
 |------|----------------|
-| `kb_indexer.py` | Reads documents from GCS KB bucket (`documents/` prefix). Chunks (500 chars, 50 overlap), embeds, stores chunks to GCS (`chunks/`), upserts vectors to Vector Search in batches of 100. |
+| `kb_indexer.py` | Reads documents from `gs://<GCS_BUCKET>/<GCS_KB_PREFIX>/documents/`. Chunks (500 chars, 50 overlap), embeds, stores chunks to `gs://<GCS_BUCKET>/<GCS_KB_PREFIX>/chunks/`, upserts vectors to Vector Search in batches of 100. |
 
 GCP Services used: `GCS KB Bucket`, `Vertex AI Embeddings API`, `Vertex AI Vector Search`
 
@@ -285,7 +285,7 @@ Everything under `src/trace_ai/` — Python modules implementing business logic 
 
 | Component | Tool | Why Infra |
 |---|---|---|
-| GCS bucket creation (Raw / Processing / Curated / KB) | Terraform | Resource provisioning |
+| GCS bucket creation (single bucket with raw / processing / curated / kb prefixes) | Terraform | Resource provisioning |
 | Eventarc trigger configuration | Terraform | GCP event binding |
 | Document AI processor creation | Terraform | One-time GCP resource |
 | Vertex AI Vector Search index creation | Terraform | Index provisioning |
@@ -325,11 +325,12 @@ python-dotenv==1.0.1
 GCP_PROJECT_ID=
 GCP_REGION=
 
-# GCS Buckets
-GCS_RAW_BUCKET=
-GCS_PROCESSING_BUCKET=
-GCS_CURATED_BUCKET=
-GCS_KB_BUCKET=
+# GCS — single bucket, all data separated by prefix
+GCS_BUCKET=
+GCS_RAW_PREFIX=raw
+GCS_PROCESSING_PREFIX=processing
+GCS_CURATED_PREFIX=curated
+GCS_KB_PREFIX=kb
 
 # Document AI
 DOCUMENT_AI_PROCESSOR_ID=
@@ -401,7 +402,7 @@ python -m trace_ai.knowledge_base.kb_indexer
 python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 
 # Process a PDF already in GCS
-python -m trace_ai.pipeline --gcs-uri gs://trace-raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
+python -m trace_ai.pipeline --gcs-uri gs://<GCS_BUCKET>/raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
 
 # Start HITL review app
 uvicorn trace_ai.review_app.main:app --reload --port 8080

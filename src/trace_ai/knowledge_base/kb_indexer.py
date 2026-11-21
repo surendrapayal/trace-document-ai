@@ -22,17 +22,17 @@ def _chunk_text(text: str) -> list[str]:
 
 def _list_kb_blobs() -> list[str]:
     client = storage.Client(project=config.GCP_PROJECT_ID)
-    return [b.name for b in client.list_blobs(config.GCS_KB_BUCKET, prefix="documents/")]
+    return [b.name for b in client.list_blobs(config.GCS_BUCKET, prefix=f"{config.GCS_KB_PREFIX}/documents/")]
 
 
 def _read_blob(blob_name: str) -> str:
     client = storage.Client(project=config.GCP_PROJECT_ID)
-    return client.bucket(config.GCS_KB_BUCKET).blob(blob_name).download_as_text()
+    return client.bucket(config.GCS_BUCKET).blob(blob_name).download_as_text()
 
 
 def _store_chunk(chunk_id: str, text: str) -> None:
     client = storage.Client(project=config.GCP_PROJECT_ID)
-    client.bucket(config.GCS_KB_BUCKET).blob(f"chunks/{chunk_id}.txt").upload_from_string(text)
+    client.bucket(config.GCS_BUCKET).blob(f"{config.GCS_KB_PREFIX}/chunks/{chunk_id}.txt").upload_from_string(text)
 
 
 def index_all() -> int:

@@ -89,12 +89,19 @@ gcloud auth application-default login
 gcloud config set project <GCP_PROJECT_ID>
 ```
 
-**6. Create GCS buckets** (or via Terraform in infra repo)
+**6. Create GCS bucket** (or via Terraform in infra repo)
 ```bash
-gcloud storage buckets create gs://<GCS_RAW_BUCKET> --location=<GCP_REGION>
-gcloud storage buckets create gs://<GCS_PROCESSING_BUCKET> --location=<GCP_REGION>
-gcloud storage buckets create gs://<GCS_CURATED_BUCKET> --location=<GCP_REGION>
-gcloud storage buckets create gs://<GCS_KB_BUCKET> --location=<GCP_REGION>
+gcloud storage buckets create gs://<GCS_BUCKET> --location=<GCP_REGION>
+```
+
+All data is stored inside this single bucket under separate prefixes:
+```
+gs://<GCS_BUCKET>/
+    raw/contracts/<contract_id>/<file>.pdf
+    processing/
+    curated/contracts/<contract_id>/output.json
+    kb/documents/
+    kb/chunks/
 ```
 
 **7. (BigQuery only) Create dataset and tables**

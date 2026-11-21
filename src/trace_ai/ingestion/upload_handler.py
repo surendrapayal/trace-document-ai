@@ -21,8 +21,8 @@ def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
     if not contract_id:
         contract_id = f"CNT-{uuid.uuid4().hex[:12].upper()}"
 
-    blob_name = f"contracts/{contract_id}/{os.path.basename(local_path)}"
-    gcs_uri = upload(local_path, config.GCS_RAW_BUCKET, blob_name)
+    blob_name = f"{config.GCS_RAW_PREFIX}/contracts/{contract_id}/{os.path.basename(local_path)}"
+    gcs_uri = upload(local_path, config.GCS_BUCKET, blob_name)
 
     log("ingestion", contract_id, "Contract uploaded to GCS raw zone", gcs_uri=gcs_uri)
 

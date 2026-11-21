@@ -30,7 +30,7 @@ def query(contract_text: str, contract_id: str, top_k: int = 5) -> str:
     chunks = []
     for neighbor_id in neighbor_ids:
         try:
-            text = download_bytes(config.GCS_KB_BUCKET, f"chunks/{neighbor_id}.txt").decode("utf-8")
+            text = download_bytes(config.GCS_BUCKET, f"{config.GCS_KB_PREFIX}/chunks/{neighbor_id}.txt").decode("utf-8")
             chunks.append(text)
         except Exception:
             pass

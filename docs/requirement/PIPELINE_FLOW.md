@@ -48,7 +48,7 @@ Pass `--stage <name>` to run a single stage. Each stage serializes its output to
 ```bash
 # Stage 1 — OCR
 python -m trace_ai.pipeline --stage ocr \
-  --gcs-uri gs://<GCS_RAW_BUCKET>/contracts/CNT-XXX/contract.pdf \
+  --gcs-uri gs://<GCS_BUCKET>/raw/contracts/CNT-XXX/contract.pdf \
   --contract-id CNT-XXX --output s1_ocr.json
 
 # Stage 2 — DLP masking
@@ -100,7 +100,7 @@ python -m trace_ai.pipeline --stage deliver \
 **What it does**:
 - Validates file exists, has `.pdf` extension, and is ≤ 50 MB
 - Generates `contract_id` as `CNT-<12-char hex>` if not provided
-- Uploads to `gs://<GCS_RAW_BUCKET>/contracts/<contract_id>/<filename>`
+- Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/<contract_id>/<filename>`
 
 **Input**: local file path, optional `contract_id`  
 **Output**: `{ contract_id, gcs_uri, file_size_bytes }`
@@ -184,13 +184,13 @@ ExtractionResult
 1. Takes the first 2000 characters of `masked_text` as the query
 2. Embeds it using `embeddings_client.embed_single()` → `list[float]` (768 dimensions by default)
 3. Queries the Vector Search index endpoint (`VERTEX_VECTOR_SEARCH_ENDPOINT_ID`) for `top_k=5` nearest neighbors
-4. For each neighbor ID returned, downloads the corresponding chunk from `gs://<GCS_KB_BUCKET>/chunks/<id>.txt`
+4. For each neighbor ID returned, downloads the corresponding chunk from `gs://<GCS_BUCKET>/<GCS_KB_PREFIX>/chunks/<id>.txt`
 5. Joins all chunks with `\n\n---\n\n` as the separator
 
 **Input**: `masked_text: str`  
 **Output**: `rag_context: str` — concatenated KB text chunks, or `""` if no neighbors found
 
-**KB structure**: The knowledge base bucket holds reference documents (Heartland processing rules, fee schedules, compliance requirements) pre-chunked and indexed by `kb_indexer.py`. These are plain text files, not PDFs.
+**KB structure**: The knowledge base bucket holds reference documents pre-chunked and indexed by `kb_indexer.py`. Stored under `gs://<GCS_BUCKET>/<GCS_KB_PREFIX>/documents/` and `gs://<GCS_BUCKET>/<GCS_KB_PREFIX>/chunks/`. These are plain text files, not PDFs.
 
 ---
 
@@ -301,7 +301,7 @@ ValidationResult
 ### GCS write (Approved only)
 
 - Serializes `ContractRecord` to JSON via `model_dump_json(indent=2)`
-- Writes to `gs://<GCS_CURATED_BUCKET>/contracts/<contract_id>/output.json`
+- Writes to `gs://<GCS_BUCKET>/<GCS_CURATED_PREFIX>/contracts/<contract_id>/output.json`
 - Returns the `curated_gcs_uri`
 
 ### Operational store (all statuses)
