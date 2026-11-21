@@ -13,29 +13,82 @@ Local PDF / GCS URI
 [Stage 0] Ingestion          upload_handler.py       → GCS raw zone
         │
         ▼
-[Stage 1] Document AI OCR    document_ai_client.py   → ExtractionResult
+[Stage 1] Document AI OCR    document_ai_client.py   → ExtractionResult       CLI: --stage ocr
         │
         ▼
-[Stage 2] DLP PII Masking    dlp_client.py           → masked_text, pii_types[]
+[Stage 2] DLP PII Masking    dlp_client.py           → masked_text, pii_types[]  CLI: --stage dlp
         │
         ▼
-[Stage 3] RAG Retrieval      rag_client.py           → rag_context (string)
+[Stage 3] RAG Retrieval      rag_client.py           → rag_context (string)   CLI: --stage rag
         │
         ▼
-[Stage 4] Gemini Extraction  gemini_client.py        → raw_extracted (dict, 7 sections)
+[Stage 4] Gemini Extraction  gemini_client.py        → raw_extracted (dict, 7 sections)  CLI: --stage extract
         │
         ▼
-[Stage 5] Normalization      normalizer.py           → ContractRecord (Pydantic)
+[Stage 5] Normalization      normalizer.py           → ContractRecord (Pydantic)  CLI: --stage normalize
         │
         ▼
-[Stage 6] LLM Judge          llm_judge_client.py     → ValidationResult + extraction_status
+[Stage 6] LLM Judge          llm_judge_client.py     → ValidationResult + extraction_status  CLI: --stage judge
         │
         ▼
-[Stage 7] Delivery           gcs_writer.py + storage_backend.py
+[Stage 7] Delivery           gcs_writer.py + storage_backend.py               CLI: --stage deliver
               ├── Approved         → GCS curated zone + upsert_contract
               ├── Review Required  → upsert_contract (review queue)
               └── Rejected         → upsert_contract (logged)
 ```
+
+Each stage from 1–7 can be run individually via `--stage`. See [Running Individual Stages](#running-individual-stages).
+
+---
+
+## Running Individual Stages
+
+Pass `--stage <name>` to run a single stage. Each stage serializes its output to `--output` (JSON file) or stdout if omitted, and reads prior stage outputs via input flags.
+
+```bash
+# Stage 1 — OCR
+python -m trace_ai.pipeline --stage ocr \
+  --gcs-uri gs://<GCS_RAW_BUCKET>/contracts/CNT-XXX/contract.pdf \
+  --contract-id CNT-XXX --output s1_ocr.json
+
+# Stage 2 — DLP masking
+python -m trace_ai.pipeline --stage dlp \
+  --contract-id CNT-XXX --input s1_ocr.json --output s2_dlp.json
+
+# Stage 3 — RAG retrieval
+python -m trace_ai.pipeline --stage rag \
+  --contract-id CNT-XXX --input s2_dlp.json --output s3_rag.json
+
+# Stage 4 — Gemini extraction
+python -m trace_ai.pipeline --stage extract \
+  --contract-id CNT-XXX --input s2_dlp.json --rag-input s3_rag.json --output s4_extract.json
+
+# Stage 5 — Normalization
+python -m trace_ai.pipeline --stage normalize \
+  --contract-id CNT-XXX --input s4_extract.json --output s5_normalize.json
+
+# Stage 6 — LLM Judge
+python -m trace_ai.pipeline --stage judge \
+  --contract-id CNT-XXX --input s5_normalize.json --masked-text-input s2_dlp.json --output s6_judge.json
+
+# Stage 7 — Delivery
+python -m trace_ai.pipeline --stage deliver \
+  --contract-id CNT-XXX --input s5_normalize.json --judge-input s6_judge.json
+```
+
+**Input/output flag reference**:
+
+| Stage | `--input` reads | Extra input flag | `--output` writes |
+|---|---|---|---|
+| `ocr` | — | `--gcs-uri` or `--local-pdf` | `full_text`, `key_value_pairs`, `tables`, `page_count` |
+| `dlp` | OCR output | — | `masked_text`, `pii_types` |
+| `rag` | DLP output | — | `rag_context` |
+| `extract` | DLP output | `--rag-input` (RAG output) | 7-section extraction dict |
+| `normalize` | extract output | — | full `ContractRecord` as JSON |
+| `judge` | normalize output | `--masked-text-input` (DLP output) | `overall_confidence`, `verdict`, `field_scores`, `issues`, `critical_failures` |
+| `deliver` | normalize output | `--judge-input` (judge output) | `contract_id`, `extraction_status`, `confidence_score`, `curated_gcs_uri`, `issues` |
+
+`--output` is optional on every stage — omit it to print to stdout.
 
 ---
 

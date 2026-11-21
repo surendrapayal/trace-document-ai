@@ -146,6 +146,53 @@ print(result)  # {"contract_id": "CNT-...", "gcs_uri": "gs://...", "file_size_by
 
 ---
 
+## Running Individual Stages
+
+Each stage can be run independently using `--stage`. Every stage writes its output to `--output` (JSON file) or prints to stdout if omitted, and reads its dependencies from `--input` / `--rag-input` / `--masked-text-input` / `--judge-input`.
+
+```bash
+# Stage 1 — OCR
+python -m trace_ai.pipeline --stage ocr \
+  --gcs-uri gs://<GCS_RAW_BUCKET>/contracts/CNT-XXX/contract.pdf \
+  --contract-id CNT-XXX --output s1_ocr.json
+
+# Stage 2 — DLP masking
+python -m trace_ai.pipeline --stage dlp \
+  --contract-id CNT-XXX --input s1_ocr.json --output s2_dlp.json
+
+# Stage 3 — RAG retrieval
+python -m trace_ai.pipeline --stage rag \
+  --contract-id CNT-XXX --input s2_dlp.json --output s3_rag.json
+
+# Stage 4 — Gemini extraction
+python -m trace_ai.pipeline --stage extract \
+  --contract-id CNT-XXX --input s2_dlp.json --rag-input s3_rag.json --output s4_extract.json
+
+# Stage 5 — Normalization
+python -m trace_ai.pipeline --stage normalize \
+  --contract-id CNT-XXX --input s4_extract.json --output s5_normalize.json
+
+# Stage 6 — LLM Judge
+python -m trace_ai.pipeline --stage judge \
+  --contract-id CNT-XXX --input s5_normalize.json --masked-text-input s2_dlp.json --output s6_judge.json
+
+# Stage 7 — Delivery
+python -m trace_ai.pipeline --stage deliver \
+  --contract-id CNT-XXX --input s5_normalize.json --judge-input s6_judge.json
+```
+
+| Flag | Required for |
+|---|---|
+| `--stage` | Any individual stage run |
+| `--gcs-uri` / `--local-pdf` | `ocr` stage only |
+| `--input` | All stages except `ocr` |
+| `--rag-input` | `extract` stage (RAG stage output) |
+| `--masked-text-input` | `judge` stage (DLP stage output) |
+| `--judge-input` | `deliver` stage (judge stage output) |
+| `--output` | Optional on all stages — prints to stdout if omitted |
+
+---
+
 ## Review App
 
 Start the HITL review app for contracts routed to `Review Required`:
