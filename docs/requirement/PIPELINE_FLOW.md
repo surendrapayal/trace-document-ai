@@ -90,14 +90,28 @@ ExtractionResult
 **GCP service**: Cloud DLP (`projects/<id>/locations/global`)
 
 **What it does**:
-- Sends `full_text` to DLP `deidentify_content` with `CharacterMaskConfig(masking_character="*", number_to_mask=0)` — masks the entire matched span
+- Sends `full_text` to DLP `deidentify_content` — masks all matched PII spans
 - Runs a second `inspect_content` call on the original text to collect the set of detected PII type names
 - Returns the masked text and the list of detected type names
 
-**PII types scanned**:
+**PII types scanned** (hardcoded, applied when no inspect template is set):
 `PERSON_NAME`, `DATE_OF_BIRTH`, `US_SOCIAL_SECURITY_NUMBER`, `US_DRIVERS_LICENSE_NUMBER`, `PHONE_NUMBER`, `EMAIL_ADDRESS`, `STREET_ADDRESS`, `US_BANK_ROUTING_MICR`, `FINANCIAL_ACCOUNT_NUMBER`
 
-**Minimum likelihood threshold**: `LIKELY`
+**Configuration** (all via env vars / `config.py`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `DLP_INSPECT_TEMPLATE_NAME` | `""` (inline) | Full resource name of a stored GCP inspect template. When set, overrides inline `info_types` and `min_likelihood` |
+| `DLP_DEIDENTIFY_TEMPLATE_NAME` | `""` (inline) | Full resource name of a stored GCP deidentify template. When set, overrides inline `CharacterMaskConfig` |
+| `DLP_MASK_CHARACTER` | `*` | Character used to replace masked spans |
+| `DLP_NUMBER_TO_MASK` | `0` | Number of characters to mask; `0` masks the entire matched span |
+| `DLP_MIN_LIKELIHOOD` | `LIKELY` | Minimum match confidence: `POSSIBLE_REGION`, `LIKELY`, `VERY_LIKELY` |
+
+**Template vs inline behaviour**:
+- If `DLP_INSPECT_TEMPLATE_NAME` is set, `inspect_config` is passed as `None` and `inspect_template_name` is used instead — the stored template controls info types and likelihood
+- If `DLP_DEIDENTIFY_TEMPLATE_NAME` is set, `deidentify_config` is passed as `None` and `deidentify_template_name` is used instead — the stored template controls masking transformation
+- Both can be set independently; mixing (e.g. stored inspect + inline deidentify) is supported
+- Stored templates are managed in the GCP console or via the DLP API under `projects/<id>/locations/global/inspectTemplates/<id>` and `.../deidentifyTemplates/<id>`
 
 **Input**: `full_text: str` from Stage 1  
 **Output**: `(masked_text: str, pii_types: list[str])`

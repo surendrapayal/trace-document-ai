@@ -14,23 +14,29 @@ _PII_INFO_TYPES = [
     {"name": "FINANCIAL_ACCOUNT_NUMBER"},
 ]
 
-_MASK_CHAR = "*"
+
+def _inspect_config() -> dlp_v2.InspectConfig | None:
+    """Returns None when a stored inspect template is used instead."""
+    if config.DLP_INSPECT_TEMPLATE_NAME:
+        return None
+    return dlp_v2.InspectConfig(
+        info_types=_PII_INFO_TYPES,
+        min_likelihood=dlp_v2.Likelihood[config.DLP_MIN_LIKELIHOOD],
+    )
 
 
-def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
-    client = dlp_v2.DlpServiceClient()
-    parent = f"projects/{config.GCP_PROJECT_ID}/locations/global"
-
-    item = dlp_v2.ContentItem(value=text)
-    inspect_config = dlp_v2.InspectConfig(info_types=_PII_INFO_TYPES, min_likelihood=dlp_v2.Likelihood.LIKELY)
-    deidentify_config = dlp_v2.DeidentifyConfig(
+def _deidentify_config() -> dlp_v2.DeidentifyConfig | None:
+    """Returns None when a stored deidentify template is used instead."""
+    if config.DLP_DEIDENTIFY_TEMPLATE_NAME:
+        return None
+    return dlp_v2.DeidentifyConfig(
         info_type_transformations=dlp_v2.InfoTypeTransformations(
             transformations=[
                 dlp_v2.InfoTypeTransformations.InfoTypeTransformation(
                     primitive_transformation=dlp_v2.PrimitiveTransformation(
                         character_mask_config=dlp_v2.CharacterMaskConfig(
-                            masking_character=_MASK_CHAR,
-                            number_to_mask=0,
+                            masking_character=config.DLP_MASK_CHARACTER,
+                            number_to_mask=config.DLP_NUMBER_TO_MASK,
                         )
                     )
                 )
@@ -38,22 +44,29 @@ def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
         )
     )
 
-    response = client.deidentify_content(
-        request=dlp_v2.DeidentifyContentRequest(
-            parent=parent,
-            deidentify_config=deidentify_config,
-            inspect_config=inspect_config,
-            item=item,
-        )
-    )
 
-    inspect_response = client.inspect_content(
-        request=dlp_v2.InspectContentRequest(
-            parent=parent,
-            inspect_config=inspect_config,
-            item=item,
-        )
+def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
+    client = dlp_v2.DlpServiceClient()
+    parent = f"projects/{config.GCP_PROJECT_ID}/locations/global"
+    item = dlp_v2.ContentItem(value=text)
+
+    deidentify_request = dlp_v2.DeidentifyContentRequest(
+        parent=parent,
+        item=item,
+        deidentify_config=_deidentify_config(),
+        inspect_config=_inspect_config(),
+        deidentify_template_name=config.DLP_DEIDENTIFY_TEMPLATE_NAME or None,
+        inspect_template_name=config.DLP_INSPECT_TEMPLATE_NAME or None,
     )
+    response = client.deidentify_content(request=deidentify_request)
+
+    inspect_request = dlp_v2.InspectContentRequest(
+        parent=parent,
+        item=item,
+        inspect_config=_inspect_config(),
+        inspect_template_name=config.DLP_INSPECT_TEMPLATE_NAME or None,
+    )
+    inspect_response = client.inspect_content(request=inspect_request)
     detected_types = list({f.info_type.name for f in inspect_response.result.findings})
 
     log(
@@ -62,6 +75,7 @@ def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
         "DLP masking complete",
         pii_types_detected=detected_types,
         findings_count=len(inspect_response.result.findings),
+        using_templates=bool(config.DLP_INSPECT_TEMPLATE_NAME or config.DLP_DEIDENTIFY_TEMPLATE_NAME),
     )
 
     return response.item.value, detected_types

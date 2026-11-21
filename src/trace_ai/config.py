@@ -16,6 +16,13 @@ class Config:
     DOCUMENT_AI_PROCESSOR_ID: str = os.environ["DOCUMENT_AI_PROCESSOR_ID"]
     DOCUMENT_AI_LOCATION: str = os.getenv("DOCUMENT_AI_LOCATION", "us")
 
+    DLP_INSPECT_TEMPLATE_NAME: str = os.getenv("DLP_INSPECT_TEMPLATE_NAME", "")
+    DLP_DEIDENTIFY_TEMPLATE_NAME: str = os.getenv("DLP_DEIDENTIFY_TEMPLATE_NAME", "")
+    DLP_MASK_CHARACTER: str = os.getenv("DLP_MASK_CHARACTER", "*")
+    DLP_NUMBER_TO_MASK: int = int(os.getenv("DLP_NUMBER_TO_MASK", "0"))
+    # POSSIBLE_REGION, LIKELY, VERY_LIKELY
+    DLP_MIN_LIKELIHOOD: str = os.getenv("DLP_MIN_LIKELIHOOD", "LIKELY")
+
     VERTEX_GEMINI_MODEL: str = os.getenv("VERTEX_GEMINI_MODEL", "gemini-1.5-pro")
     VERTEX_AI_LOCATION: str = os.getenv("VERTEX_AI_LOCATION", "us-central1")
     VERTEX_EMBEDDING_MODEL: str = os.getenv("VERTEX_EMBEDDING_MODEL", "text-embedding-004")
