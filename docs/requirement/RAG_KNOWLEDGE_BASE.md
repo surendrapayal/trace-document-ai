@@ -34,6 +34,11 @@ SALES REP ROLES
   "isRM - Inbound and Market" = Inbound sales representative
   "TM"                        = Territory Manager
 
+SALES REP CONTACT
+-----------------
+  sales_rep_phone : Phone number listed next to the sales rep name in the header
+  sdr_name        : SDR field — Sales Development Representative, separate from sales rep
+
 COMPANY INFORMATION SECTION
 ----------------------------
 Contains two address blocks:
@@ -104,14 +109,19 @@ MERCHANT DETAILS SECTION
 -------------------------
 Contains compliance and risk questions — all Yes/No answers.
 Key fields to extract:
-  Business Type       : Private / Non-Profit / Government
-  Ownership Type      : LLC Corporation / Tax Exempt / Sole Proprietor / Partnership
-  Tax ID              : Federal EIN (format: XX-XXXXXXX)
-  Services            : Business category description
-  New/Existing        : "Open-New to Card" / "Switching to Heartland" / "Existing"
-  Length in Business  : e.g. "< 1 year", "> 15 years", "1-3 years"
-  Number of Terminals : Integer
-  PCI Compliant       : Yes/No → boolean true/false
+  Business Type             : Private / Non-Profit / Government
+  Ownership Type            : LLC Corporation / Tax Exempt / Sole Proprietor / Partnership
+  Tax ID                    : Federal EIN (format: XX-XXXXXXX)
+  Services                  : Business category description
+  New/Existing              : "Open-New to Card" / "Switching to Heartland" / "Existing"
+  Length in Business        : e.g. "< 1 year", "> 15 years", "1-3 years"
+  Number of Terminals       : Integer
+  PCI Compliant             : Yes/No → boolean true/false
+  Deposit Method            : e.g. "ACH", "Check"
+  Dispute Letter Mailing    : Yes/No — whether dispute letters are sent by mail
+  Dispute Letter Electronic : Yes/No — whether dispute letters are sent electronically
+  Statement Type            : e.g. "Online", "Paper"
+  Card Acceptance           : e.g. "Credit and Debit"
 
 PROCESSING DETAILS SECTION
 ---------------------------
@@ -122,6 +132,13 @@ Shows transaction method breakdown as percentages — must sum to 100%.
   Face to Face %      : In-person transactions
   Inbound Telephone % : Phone orders
   Future Delivery %   : Orders fulfilled in future
+
+ADDITIONAL PROCESSING FIELDS
+-----------------------------
+  Signature Obtained      : Yes/No — whether merchant obtains customer signature
+  Consumer Charged        : Yes/No — whether consumer is charged at time of transaction
+  Credit Card via Website : Yes/No — whether merchant accepts cards through a website
+                            "Yes" -> true, "No" -> false
 
 DOCUMENT GENERATION DATE
 ------------------------
@@ -236,6 +253,23 @@ Tax Exempt       : Non-profit / charitable organization (has EIN starting with 0
 Sole Proprietor  : Individual business owner
 Partnership      : Multi-owner business
 Corporation      : C-Corp or S-Corp
+
+OWNER/OFFICER FIELDS
+---------------------
+Each owner or officer entry on page 3 contains:
+  name                  : Full name
+  title                 : e.g. "Owner", "Officer", "Director"
+  ownership_pct         : Ownership percentage e.g. "100%", "33%"
+  address               : Street address
+  city_state_zip        : City, state, zip
+  email                 : Email address
+  home_phone            : Home phone number
+  cell_phone            : Cell phone number
+  dob                   : Date of birth — will be masked by DLP e.g. "7/31/1992"
+  ssn_last4             : SSN — shown masked e.g. "***-**-6306"
+  drivers_license_last4 : Driver’s license — shown masked e.g. "****8113"
+  length_at_address     : How long at current address e.g. "5 years"
+  citizenship           : e.g. "US Citizen"
 
 NEW/EXISTING BUSINESS VALUES
 ------------------------------
