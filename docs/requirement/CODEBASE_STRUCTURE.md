@@ -304,7 +304,8 @@ Everything under `src/trace_ai/` — Python modules implementing business logic 
 google-cloud-storage==2.18.2
 google-cloud-documentai==2.31.0
 google-cloud-dlp==3.22.0
-google-cloud-aiplatform==1.71.1
+google-cloud-aiplatform==1.71.1   # Vector Search + Embeddings
+google-genai>=1.0.0               # Gemini (gemini_client, llm_judge_client)
 google-cloud-firestore==2.19.0
 google-cloud-bigquery==3.27.0
 google-cloud-logging==3.11.3

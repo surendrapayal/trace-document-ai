@@ -1,16 +1,18 @@
 import json
 import re
 from pathlib import Path
-import vertexai
-from vertexai.generative_models import GenerativeModel, GenerationConfig
+from google import genai
+from google.genai import types
 from trace_ai.config import config
 from trace_ai.common.logging_client import log
 from trace_ai.validation.validation_models import ValidationResult, FieldScores
 
-vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
-
+_client = genai.Client(vertexai=True, project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
 _PROMPT_PATH = Path(__file__).parent.parent / "intelligence" / "prompts" / "llm_judge.txt"
-_JSON_CONFIG = GenerationConfig(temperature=0.0, response_mime_type="application/json")
+_JSON_CONFIG = types.GenerateContentConfig(
+    temperature=0.0,
+    response_mime_type="application/json",
+)
 
 
 def evaluate(contract_text: str, extracted_json: str, contract_id: str) -> ValidationResult:
@@ -21,8 +23,11 @@ def evaluate(contract_text: str, extracted_json: str, contract_id: str) -> Valid
         extracted_json=extracted_json,
     )
 
-    model = GenerativeModel(config.VERTEX_GEMINI_MODEL)
-    response = model.generate_content(prompt, generation_config=_JSON_CONFIG)
+    response = _client.models.generate_content(
+        model=config.VERTEX_GEMINI_MODEL,
+        contents=prompt,
+        config=_JSON_CONFIG,
+    )
     raw = response.text.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)

@@ -1,15 +1,17 @@
 import json
 import re
 from pathlib import Path
-import vertexai
-from vertexai.generative_models import GenerativeModel, GenerationConfig
+from google import genai
+from google.genai import types
 from trace_ai.config import config
 from trace_ai.common.logging_client import log
 
-vertexai.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
-
+_client = genai.Client(vertexai=True, project=config.GCP_PROJECT_ID, location=config.VERTEX_AI_LOCATION)
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
-_JSON_GENERATION_CONFIG = GenerationConfig(temperature=0.0, response_mime_type="application/json")
+_JSON_CONFIG = types.GenerateContentConfig(
+    temperature=0.0,
+    response_mime_type="application/json",
+)
 
 
 def _load_prompt(name: str) -> str:
@@ -17,8 +19,11 @@ def _load_prompt(name: str) -> str:
 
 
 def _call(prompt: str, contract_id: str, section: str) -> dict | list:
-    model = GenerativeModel(config.VERTEX_GEMINI_MODEL)
-    response = model.generate_content(prompt, generation_config=_JSON_GENERATION_CONFIG)
+    response = _client.models.generate_content(
+        model=config.VERTEX_GEMINI_MODEL,
+        contents=prompt,
+        config=_JSON_CONFIG,
+    )
     raw = response.text.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
