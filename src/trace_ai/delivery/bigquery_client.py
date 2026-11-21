@@ -14,7 +14,11 @@ def _now() -> str:
 
 
 def _table(name: str) -> str:
-    return f"{config.GCP_PROJECT_ID}.{_dataset}.{name}"
+    tables = {
+        "contracts": config.BIGQUERY_TABLE_CONTRACTS,
+        "audit_events": config.BIGQUERY_TABLE_AUDIT,
+    }
+    return f"{config.GCP_PROJECT_ID}.{_dataset}.{tables[name]}"
 
 
 def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:

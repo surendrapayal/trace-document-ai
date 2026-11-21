@@ -30,6 +30,8 @@ class Config:
     FIRESTORE_COLLECTION_AUDIT: str = os.getenv("FIRESTORE_COLLECTION_AUDIT", "audit_events")
 
     BIGQUERY_DATASET: str = os.getenv("BIGQUERY_DATASET", "trace_contracts")
+    BIGQUERY_TABLE_CONTRACTS: str = os.getenv("BIGQUERY_TABLE_CONTRACTS", "contracts")
+    BIGQUERY_TABLE_AUDIT: str = os.getenv("BIGQUERY_TABLE_AUDIT", "audit_events")
 
     CONFIDENCE_THRESHOLD_APPROVE: float = float(os.getenv("CONFIDENCE_THRESHOLD_APPROVE", "0.85"))
     CONFIDENCE_THRESHOLD_REVIEW: float = float(os.getenv("CONFIDENCE_THRESHOLD_REVIEW", "0.60"))

@@ -53,7 +53,7 @@ contracts_schema = [
     bigquery.SchemaField("reviewed_at", "STRING"),
 ]
 
-contracts_table = bigquery.Table(f"{dataset_ref}.contracts", schema=contracts_schema)
+contracts_table = bigquery.Table(f"{dataset_ref}.{config.BIGQUERY_TABLE_CONTRACTS}", schema=contracts_schema)
 contracts_table.clustering_fields = ["extraction_status"]
 
 # ── audit_events table ────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ audit_schema = [
     bigquery.SchemaField("timestamp", "STRING", mode="REQUIRED"),
 ]
 
-audit_table = bigquery.Table(f"{dataset_ref}.audit_events", schema=audit_schema)
+audit_table = bigquery.Table(f"{dataset_ref}.{config.BIGQUERY_TABLE_AUDIT}", schema=audit_schema)
 
 # ── create ────────────────────────────────────────────────────────────────────
 
@@ -76,3 +76,5 @@ for table in (contracts_table, audit_table):
 
 print("\nDone. Add to .env:")
 print(f"  BIGQUERY_DATASET={config.BIGQUERY_DATASET}")
+print(f"  BIGQUERY_TABLE_CONTRACTS={config.BIGQUERY_TABLE_CONTRACTS}")
+print(f"  BIGQUERY_TABLE_AUDIT={config.BIGQUERY_TABLE_AUDIT}")
