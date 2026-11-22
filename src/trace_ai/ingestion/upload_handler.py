@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 from trace_ai.common.gcs_client import upload
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
@@ -25,7 +25,7 @@ def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
     blob_name = f"{config.GCS_RAW_PREFIX}/contracts/{contract_id}/{os.path.basename(local_path)}"
     gcs_uri = upload(local_path, config.GCS_BUCKET, blob_name)
 
-    log("ingestion", contract_id, "Contract uploaded to GCS raw zone", gcs_uri=gcs_uri)
+    log("Contract uploaded to GCS raw zone", gcs_uri=gcs_uri, file_size_bytes=file_size)
 
     return {"contract_id": contract_id, "gcs_uri": gcs_uri, "file_size_bytes": file_size}
 
@@ -45,7 +45,7 @@ def upload_contracts_from_folder(folder_path: str) -> list[dict]:
             result = upload_contract(str(pdf))
             results.append(result)
         except Exception as e:
-            log("ingestion", "batch", f"Failed to upload {pdf.name}", severity="ERROR", error=str(e))
+            log(f"Failed to upload {pdf.name}", severity="ERROR", error=str(e))
             results.append({"file": pdf.name, "error": str(e)})
 
     return results

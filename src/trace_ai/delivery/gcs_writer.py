@@ -1,6 +1,6 @@
 from trace_ai.common.gcs_client import upload_json
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.normalization.schema import ContractRecord
 
 
@@ -11,5 +11,5 @@ def write(record: ContractRecord) -> str:
         config.GCS_BUCKET,
         blob_name,
     )
-    log("delivery", record.contract_id, "Contract JSON written to GCS curated zone", gcs_uri=gcs_uri)
+    log("Contract JSON written to GCS curated zone", gcs_uri=gcs_uri)
     return gcs_uri

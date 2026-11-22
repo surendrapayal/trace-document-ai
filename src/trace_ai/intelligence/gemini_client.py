@@ -4,7 +4,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 
 _client = genai.Client(vertexai=True, project=config.GCP_PROJECT_ID, location=config.VERTEX_GEMINI_LOCATION)
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -31,18 +31,18 @@ def _call(prompt: str, contract_id: str, section: str) -> dict | list:
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        log("intelligence", contract_id, f"JSON parse error in {section}", severity="ERROR", error=str(e))
+        log(f"JSON parse error in {section}", severity="ERROR", error=str(e), raw_response=raw[:200])
         raise
 
 
 def extract_all(contract_text: str, rag_context: str, contract_id: str) -> dict:
-    log("intelligence", contract_id, "Starting Gemini extraction")
+    log("Starting Gemini extraction", severity="DEBUG", rag_context_length=len(rag_context), contract_text_length=len(contract_text))
 
     def run(prompt_file: str, section: str) -> dict | list:
         template = _load_prompt(prompt_file)
         prompt = template.replace("{contract_text}", contract_text).replace("{rag_context}", rag_context)
         result = _call(prompt, contract_id, section)
-        log("intelligence", contract_id, f"Extracted {section}")
+        log(f"Extracted section: {section}", severity="DEBUG")
         return result
 
     return {

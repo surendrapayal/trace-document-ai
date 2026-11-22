@@ -99,5 +99,11 @@ class Config:
     CONFIDENCE_THRESHOLD_APPROVE: float = float(os.getenv("CONFIDENCE_THRESHOLD_APPROVE", "0.85"))
     CONFIDENCE_THRESHOLD_REVIEW: float = float(os.getenv("CONFIDENCE_THRESHOLD_REVIEW", "0.60"))
 
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    LOG_TO_FILE: bool = os.getenv("LOG_TO_FILE", "false").lower() == "true"
+    LOG_FILE_PATH: str = os.getenv("LOG_FILE_PATH", "logs/trace_ai.log")
+    LOG_FILE_MAX_BYTES: int = int(os.getenv("LOG_FILE_MAX_BYTES", str(5 * 1024 * 1024)))  # 5MB
+    LOG_FILE_BACKUP_COUNT: int = int(os.getenv("LOG_FILE_BACKUP_COUNT", "3"))
+
 
 config = Config()

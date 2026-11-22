@@ -1,7 +1,7 @@
 import vertexai
 from google.cloud.aiplatform import MatchingEngineIndexEndpoint
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.common.gcs_client import download_bytes
 from trace_ai.intelligence.embeddings_client import embed_single
 
@@ -22,11 +22,11 @@ def query(contract_text: str, contract_id: str, top_k: int = 5) -> str:
     )
 
     if not response or not response[0]:
-        log("intelligence", contract_id, "RAG returned no results")
+        log("RAG returned no results", severity="WARNING")
         return ""
 
     neighbor_ids = [neighbor.id for neighbor in response[0]]
-    log("intelligence", contract_id, "RAG neighbors retrieved", neighbor_ids=neighbor_ids)
+    log("RAG neighbors retrieved", severity="DEBUG", neighbor_ids=neighbor_ids, count=len(neighbor_ids))
 
     chunks = []
     for neighbor_id in neighbor_ids:
@@ -34,6 +34,6 @@ def query(contract_text: str, contract_id: str, top_k: int = 5) -> str:
             text = download_bytes(config.GCS_BUCKET, f"{config.GCS_KB_PREFIX}/chunks/{neighbor_id}.txt").decode("utf-8")
             chunks.append(text)
         except Exception as e:
-            log("intelligence", contract_id, f"Failed to fetch chunk {neighbor_id}", severity="WARNING", error=str(e))
+            log(f"Failed to fetch chunk {neighbor_id}", severity="WARNING", error=str(e))
 
     return "\n\n---\n\n".join(chunks)

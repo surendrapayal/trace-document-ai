@@ -4,7 +4,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.validation.validation_models import ValidationResult, FieldScores
 
 _client = genai.Client(vertexai=True, project=config.GCP_PROJECT_ID, location=config.VERTEX_GEMINI_LOCATION)
@@ -16,7 +16,7 @@ _JSON_CONFIG = types.GenerateContentConfig(
 
 
 def evaluate(contract_text: str, extracted_json: str, contract_id: str) -> ValidationResult:
-    log("validation", contract_id, "Starting LLM judge evaluation")
+    log("Starting LLM judge evaluation", severity="DEBUG", contract_text_length=len(contract_text))
 
     template = _PROMPT_PATH.read_text()
     prompt = template.replace("{contract_text}", contract_text).replace("{extracted_json}", extracted_json)
@@ -40,6 +40,6 @@ def evaluate(contract_text: str, extracted_json: str, contract_id: str) -> Valid
         critical_failures=data.get("critical_failures", []),
     )
 
-    log("validation", contract_id, "LLM judge complete",
-        verdict=result.verdict, confidence=result.overall_confidence)
+    log("LLM judge complete", verdict=result.verdict, confidence=result.overall_confidence,
+        issues_count=len(result.issues), critical_failures_count=len(result.critical_failures))
     return result

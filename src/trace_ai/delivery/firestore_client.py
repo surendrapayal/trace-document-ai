@@ -1,6 +1,6 @@
 from google.cloud import firestore
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.normalization.schema import ContractRecord
 from datetime import datetime, timezone
 
@@ -18,7 +18,7 @@ def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:
         data["curated_gcs_uri"] = gcs_uri
     data["updated_at"] = _now()
     doc_ref.set(data, merge=True)
-    log("delivery", record.contract_id, "Contract upserted to Firestore")
+    log("Contract upserted to Firestore", severity="DEBUG")
 
 
 def write_audit_event(contract_id: str, stage: str, event: str, details: dict | None = None) -> None:
@@ -29,7 +29,7 @@ def write_audit_event(contract_id: str, stage: str, event: str, details: dict | 
         "details": details or {},
         "timestamp": _now(),
     })
-    log("delivery", contract_id, f"Audit event written: {event}", audit_stage=stage)
+    log("Audit event written", severity="DEBUG", event=event, audit_stage=stage)
 
 
 def get_contract(contract_id: str) -> dict | None:
@@ -56,4 +56,4 @@ def update_review_decision(contract_id: str, reviewer: str, decision: str, notes
     write_audit_event(contract_id, "review", "human_review_decision", {
         "reviewer": reviewer, "decision": decision, "notes": notes,
     })
-    log("delivery", contract_id, "Review decision recorded", decision=decision, reviewer=reviewer)
+    log("Review decision recorded", decision=decision, reviewer=reviewer)

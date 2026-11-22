@@ -1,7 +1,7 @@
 from google.cloud import documentai
 from trace_ai.config import config
 from trace_ai.common.gcs_client import download_bytes
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.extraction.extraction_models import ExtractionResult, KeyValuePair, ExtractedTable
 
 
@@ -28,7 +28,7 @@ def _extract_text_from_layout(document: documentai.Document, layout) -> str:
 
 
 def process_document(gcs_uri: str, contract_id: str) -> ExtractionResult:
-    log("extraction", contract_id, "Submitting to Document AI", gcs_uri=gcs_uri)
+    log("Submitting to Document AI", severity="DEBUG", gcs_uri=gcs_uri)
 
     bucket_name = gcs_uri.replace("gs://", "").split("/")[0]
     blob_name = "/".join(gcs_uri.replace("gs://", "").split("/")[1:])
@@ -74,7 +74,7 @@ def process_document(gcs_uri: str, contract_id: str) -> ExtractionResult:
                 rows.append(row)
             tables.append(ExtractedTable(headers=headers, rows=rows))
 
-    log("extraction", contract_id, "Document AI extraction complete", page_count=len(document.pages))
+    log("Document AI extraction complete", page_count=len(document.pages), key_value_pairs_count=len(key_value_pairs), tables_count=len(tables))
 
     return ExtractionResult(
         full_text=document.text,

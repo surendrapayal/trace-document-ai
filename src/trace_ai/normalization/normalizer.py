@@ -3,7 +3,7 @@ from trace_ai.normalization.schema import (
     CreditCardPricing, ProcessingDetails, OwnerOfficer, BankingInformation,
     CardPricingRate, RecurringFee, AmexDetails, BillingModel, SettlementType, FeeFrequency,
 )
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from datetime import datetime, timezone
 
 
@@ -45,7 +45,7 @@ def _fee_frequency(value: str | None) -> FeeFrequency:
 
 
 def normalize(raw: dict, contract_id: str) -> ContractRecord:
-    log("normalization", contract_id, "Normalizing extracted data")
+    log("Normalizing extracted data", severity="DEBUG", sections=list(raw.keys()))
 
     pricing_raw = raw.get("credit_card_pricing", {})
     card_rates = [CardPricingRate(**r) for r in pricing_raw.get("card_rates", [])]
@@ -85,5 +85,5 @@ def normalize(raw: dict, contract_id: str) -> ContractRecord:
         extracted_at=datetime.now(timezone.utc).isoformat(),
     )
 
-    log("normalization", contract_id, "Normalization complete")
+    log("Normalization complete", billing_model=str(record.credit_card_pricing.billing_model), owners_count=len(record.owners_officers))
     return record

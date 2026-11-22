@@ -1,6 +1,6 @@
 from google.cloud import dlp_v2
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 
 _PII_INFO_TYPES = [
     {"name": "PERSON_NAME"},
@@ -47,7 +47,7 @@ def _deidentify_config() -> dlp_v2.DeidentifyConfig | None:
 
 def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
     if not config.DLP_ENABLED:
-        log("extraction", contract_id, "DLP masking disabled — skipping")
+        log("DLP masking disabled — skipping", severity="WARNING")
         return text, []
 
     client = dlp_v2.DlpServiceClient()
@@ -74,8 +74,6 @@ def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
     detected_types = list({f.info_type.name for f in inspect_response.result.findings})
 
     log(
-        "extraction",
-        contract_id,
         "DLP masking complete",
         pii_types_detected=detected_types,
         findings_count=len(inspect_response.result.findings),

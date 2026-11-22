@@ -1,6 +1,6 @@
 from google.cloud import bigquery
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.normalization.schema import ContractRecord
 from datetime import datetime, timezone
 import json
@@ -44,7 +44,7 @@ def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:
         ]
     )
     _client.query(merge_sql, job_config=job_config).result()
-    log("delivery", record.contract_id, "Contract upserted to BigQuery")
+    log("Contract upserted to BigQuery", severity="DEBUG")
 
 
 def write_audit_event(contract_id: str, stage: str, event: str, details: dict | None = None) -> None:
@@ -56,7 +56,7 @@ def write_audit_event(contract_id: str, stage: str, event: str, details: dict | 
         "timestamp": _now(),
     }
     _client.insert_rows_json(_table("audit_events"), [row])
-    log("delivery", contract_id, f"Audit event written: {event}", audit_stage=stage)
+    log("Audit event written", severity="DEBUG", event=event, audit_stage=stage)
 
 
 def get_contract(contract_id: str) -> dict | None:
@@ -95,4 +95,4 @@ def update_review_decision(contract_id: str, reviewer: str, decision: str, notes
     write_audit_event(contract_id, "review", "human_review_decision", {
         "reviewer": reviewer, "decision": decision, "notes": notes,
     })
-    log("delivery", contract_id, "Review decision recorded", decision=decision, reviewer=reviewer)
+    log("Review decision recorded", decision=decision, reviewer=reviewer)

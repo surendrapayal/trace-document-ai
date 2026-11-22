@@ -23,7 +23,7 @@ import argparse
 import json
 import sys
 
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log, set_context, clear_context
 from trace_ai.extraction.document_ai_client import process_document
 from trace_ai.extraction.dlp_client import mask_pii
 from trace_ai.intelligence.rag_client import query as rag_query
@@ -39,6 +39,7 @@ from trace_ai.delivery.storage_backend import upsert_contract, write_audit_event
 # ── Individual stage functions ────────────────────────────────────────────────
 
 def run_ocr(gcs_uri: str, contract_id: str) -> dict:
+    set_context(stage="extraction")
     write_audit_event(contract_id, "extraction", "document_ai_started")
     result = process_document(gcs_uri, contract_id)
     write_audit_event(contract_id, "extraction", "document_ai_complete", {"page_count": result.page_count})
@@ -51,6 +52,7 @@ def run_ocr(gcs_uri: str, contract_id: str) -> dict:
 
 
 def run_dlp(full_text: str, contract_id: str) -> dict:
+    set_context(stage="extraction")
     write_audit_event(contract_id, "extraction", "dlp_started")
     masked_text, pii_types = mask_pii(full_text, contract_id)
     write_audit_event(contract_id, "extraction", "dlp_complete", {"pii_types": pii_types})
@@ -58,6 +60,7 @@ def run_dlp(full_text: str, contract_id: str) -> dict:
 
 
 def run_rag(masked_text: str, contract_id: str) -> dict:
+    set_context(stage="intelligence")
     write_audit_event(contract_id, "intelligence", "rag_query_started")
     rag_context = rag_query(masked_text, contract_id)
     write_audit_event(contract_id, "intelligence", "rag_query_complete")
@@ -65,6 +68,7 @@ def run_rag(masked_text: str, contract_id: str) -> dict:
 
 
 def run_extract(masked_text: str, rag_context: str, contract_id: str) -> dict:
+    set_context(stage="intelligence")
     write_audit_event(contract_id, "intelligence", "gemini_extraction_started")
     raw_extracted = extract_all(masked_text, rag_context, contract_id)
     write_audit_event(contract_id, "intelligence", "gemini_extraction_complete")
@@ -72,6 +76,7 @@ def run_extract(masked_text: str, rag_context: str, contract_id: str) -> dict:
 
 
 def run_normalize(raw_extracted: dict, contract_id: str) -> dict:
+    set_context(stage="normalization")
     write_audit_event(contract_id, "normalization", "normalization_started")
     raw_extracted["contract_id"] = contract_id
     contract_record = normalize(raw_extracted, contract_id)
@@ -80,6 +85,7 @@ def run_normalize(raw_extracted: dict, contract_id: str) -> dict:
 
 
 def run_judge(masked_text: str, contract_record_dict: dict, contract_id: str) -> dict:
+    set_context(stage="validation")
     write_audit_event(contract_id, "validation", "llm_judge_started")
     contract_record = ContractRecord(**contract_record_dict)
     validation_result = evaluate(
@@ -104,6 +110,7 @@ def run_judge(masked_text: str, contract_record_dict: dict, contract_id: str) ->
 
 
 def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str) -> dict:
+    set_context(stage="delivery")
     contract_record = ContractRecord(**contract_record_dict)
     extraction_status = judge_result["verdict"]
     contract_record.confidence_score = judge_result["overall_confidence"]
@@ -115,10 +122,10 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
         curated_uri = gcs_write(contract_record)
         write_audit_event(contract_id, "delivery", "written_to_curated", {"gcs_uri": curated_uri})
     elif extraction_status == "Review Required":
-        log("pipeline", contract_id, "Routed to human review queue")
+        log("Routed to human review queue", severity="WARNING")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")
     elif extraction_status == "Rejected":
-        log("pipeline", contract_id, "Contract rejected — manual intervention required", severity="WARNING")
+        log("Contract rejected — manual intervention required", severity="ERROR")
         write_audit_event(contract_id, "delivery", "rejected")
 
     upsert_contract(contract_record, curated_uri)
@@ -135,17 +142,26 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
 # ── Full pipeline ─────────────────────────────────────────────────────────────
 
 def run(gcs_uri: str, contract_id: str) -> dict:
-    log("pipeline", contract_id, "Pipeline started", gcs_uri=gcs_uri)
+    import uuid
+    set_context(contract_id=contract_id, request_id=uuid.uuid4().hex[:8].upper(), stage="pipeline")
+    log("Pipeline started", gcs_uri=gcs_uri)
 
-    ocr_result = run_ocr(gcs_uri, contract_id)
-    dlp_result = run_dlp(ocr_result["full_text"], contract_id)
-    rag_result = run_rag(dlp_result["masked_text"], contract_id)
-    extract_result = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
-    normalize_result = run_normalize(extract_result, contract_id)
-    judge_result = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
-    result = run_deliver(normalize_result, judge_result, contract_id)
+    try:
+        ocr_result     = run_ocr(gcs_uri, contract_id)
+        dlp_result     = run_dlp(ocr_result["full_text"], contract_id)
+        rag_result     = run_rag(dlp_result["masked_text"], contract_id)
+        extract_result = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
+        normalize_result = run_normalize(extract_result, contract_id)
+        judge_result   = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
+        result         = run_deliver(normalize_result, judge_result, contract_id)
+    except Exception as e:
+        log("Pipeline failed", severity="ERROR", error=str(e))
+        raise
+    finally:
+        clear_context()
 
-    log("pipeline", contract_id, "Pipeline complete", **result)
+    set_context(stage="pipeline")
+    log("Pipeline complete", **result)
     return result
 
 
