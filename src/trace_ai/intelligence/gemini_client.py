@@ -39,10 +39,8 @@ def extract_all(contract_text: str, rag_context: str, contract_id: str) -> dict:
     log("intelligence", contract_id, "Starting Gemini extraction")
 
     def run(prompt_file: str, section: str) -> dict | list:
-        prompt = _load_prompt(prompt_file).format(
-            contract_text=contract_text,
-            rag_context=rag_context,
-        )
+        template = _load_prompt(prompt_file)
+        prompt = template.replace("{contract_text}", contract_text).replace("{rag_context}", rag_context)
         result = _call(prompt, contract_id, section)
         log("intelligence", contract_id, f"Extracted {section}")
         return result

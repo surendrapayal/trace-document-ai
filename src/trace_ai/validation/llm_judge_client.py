@@ -18,10 +18,8 @@ _JSON_CONFIG = types.GenerateContentConfig(
 def evaluate(contract_text: str, extracted_json: str, contract_id: str) -> ValidationResult:
     log("validation", contract_id, "Starting LLM judge evaluation")
 
-    prompt = _PROMPT_PATH.read_text().format(
-        contract_text=contract_text,
-        extracted_json=extracted_json,
-    )
+    template = _PROMPT_PATH.read_text()
+    prompt = template.replace("{contract_text}", contract_text).replace("{extracted_json}", extracted_json)
 
     response = _client.models.generate_content(
         model=config.VERTEX_GEMINI_MODEL,
