@@ -21,42 +21,32 @@ def _table(name: str) -> str:
     return f"{config.GCP_PROJECT_ID}.{_dataset}.{tables[name]}"
 
 
-_JSON_COLUMNS = {
-    "processor_info", "company_information", "merchant_details",
-    "credit_card_pricing", "processing_details", "owners_officers",
-    "banking_information",
-}
-
-
-def _sql_val(col: str) -> str:
-    return f"PARSE_JSON(@{col})" if col in _JSON_COLUMNS else f"@{col}"
-
-
 def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:
     data = record.model_dump()
     if gcs_uri:
         data["curated_gcs_uri"] = gcs_uri
     data["updated_at"] = _now()
 
+    # Nested dicts/lists go to JSON columns: pass as STRING and convert with PARSE_JSON
     row = {k: (json.dumps(v) if isinstance(v, (dict, list)) else v) for k, v in data.items()}
+    json_cols = {k for k, v in data.items() if isinstance(v, (dict, list))}
 
-    set_clause  = ", ".join(f"T.{k} = {_sql_val(k)}" for k in row)
-    insert_cols = ", ".join(row)
-    insert_vals = ", ".join(_sql_val(k) for k in row)
+    def _ref(k: str) -> str:
+        return f"PARSE_JSON(@{k})" if k in json_cols else f"@{k}"
+
+    def _param(k: str, v) -> bigquery.ScalarQueryParameter:
+        if isinstance(v, float):
+            return bigquery.ScalarQueryParameter(k, "FLOAT64", v)
+        return bigquery.ScalarQueryParameter(k, "STRING", str(v) if v is not None else None)
 
     merge_sql = f"""
         MERGE `{_table("contracts")}` T
         USING (SELECT @contract_id AS contract_id) S
         ON T.contract_id = S.contract_id
-        WHEN MATCHED THEN UPDATE SET {set_clause}
-        WHEN NOT MATCHED THEN INSERT ({insert_cols}) VALUES ({insert_vals})
+        WHEN MATCHED THEN UPDATE SET {", ".join(f"T.{k} = {_ref(k)}" for k in row)}
+        WHEN NOT MATCHED THEN INSERT ({", ".join(row)}) VALUES ({", ".join(_ref(k) for k in row)})
     """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter(k, "STRING", str(v) if v is not None else None)
-            for k, v in row.items()
-        ]
-    )
+    job_config = bigquery.QueryJobConfig(query_parameters=[_param(k, v) for k, v in row.items()])
     _client.query(merge_sql, job_config=job_config).result()
     log("Contract upserted to BigQuery", severity="DEBUG")
 
