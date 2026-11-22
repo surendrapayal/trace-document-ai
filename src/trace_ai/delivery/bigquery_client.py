@@ -21,21 +21,35 @@ def _table(name: str) -> str:
     return f"{config.GCP_PROJECT_ID}.{_dataset}.{tables[name]}"
 
 
+_JSON_COLUMNS = {
+    "processor_info", "company_information", "merchant_details",
+    "credit_card_pricing", "processing_details", "owners_officers",
+    "banking_information",
+}
+
+
+def _sql_val(col: str) -> str:
+    return f"PARSE_JSON(@{col})" if col in _JSON_COLUMNS else f"@{col}"
+
+
 def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:
     data = record.model_dump()
     if gcs_uri:
         data["curated_gcs_uri"] = gcs_uri
     data["updated_at"] = _now()
 
-    # Serialize nested dicts/lists to JSON strings for BQ compatibility
     row = {k: (json.dumps(v) if isinstance(v, (dict, list)) else v) for k, v in data.items()}
+
+    set_clause  = ", ".join(f"T.{k} = {_sql_val(k)}" for k in row)
+    insert_cols = ", ".join(row)
+    insert_vals = ", ".join(_sql_val(k) for k in row)
 
     merge_sql = f"""
         MERGE `{_table("contracts")}` T
         USING (SELECT @contract_id AS contract_id) S
         ON T.contract_id = S.contract_id
-        WHEN MATCHED THEN UPDATE SET {", ".join(f"T.{k} = @{k}" for k in row)}
-        WHEN NOT MATCHED THEN INSERT ({", ".join(row)}) VALUES ({", ".join(f"@{k}" for k in row)})
+        WHEN MATCHED THEN UPDATE SET {set_clause}
+        WHEN NOT MATCHED THEN INSERT ({insert_cols}) VALUES ({insert_vals})
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[

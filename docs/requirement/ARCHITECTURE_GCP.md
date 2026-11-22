@@ -46,7 +46,7 @@ flowchart TD
     subgraph SECURITY["🔒 SECURITY & OBSERVABILITY"]
         IAM["Cloud IAM\n(RBAC)"]
         SSO["Google Workspace SSO\n/ Identity Platform"]
-        LOGGING["Cloud Logging\n+ Cloud Audit Logs"]
+        LOGGING["Cloud Audit Logs\n+ Structured JSON Logs"]
         MONITORING["Cloud Monitoring\n(Alerts & Metrics)"]
     end
 

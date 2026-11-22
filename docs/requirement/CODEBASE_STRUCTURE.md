@@ -21,7 +21,7 @@ trace-document-ai/
 │       ├── common/
 │       │   ├── __init__.py
 │       │   ├── gcs_client.py
-│       │   └── logging_client.py
+│       │   └── logger.py
 │       │
 │       ├── ingestion/
 │       │   ├── __init__.py
@@ -136,9 +136,9 @@ Shared utilities used across all modules.
 | File | Responsibility |
 |------|----------------|
 | `gcs_client.py` | Shared helper for GCS upload, download, upload_json, list_blobs across all zones. |
-| `logging_client.py` | Structured JSON logging wrapper emitting to Cloud Logging with consistent fields — stage, contract_id, severity. |
+| `logger.py` | Structured JSON logger with MDC context (`contextvars`). Emits one JSON line per log call to stdout always, and optionally to a rotating file when `LOG_TO_FILE=true`. No GCP dependency. |
 
-GCP Services used: `GCS`, `Cloud Logging`
+GCP Services used: `GCS`
 
 ---
 
@@ -251,6 +251,20 @@ FastAPI + Jinja2 web application for human-in-the-loop (HITL) contract review. D
 
 GCP Services used: `Firestore` or `BigQuery` (via storage_backend), `GCS Curated Zone`
 
+**How the review app works**:
+- `queue.html` and `review.html` are static Jinja2 template files — never generated, exist permanently in the repo
+- Jinja2 renders them at request time by injecting live contract data fetched from Firestore/BigQuery
+- A contract appears in `/queue` only when Stage 7 writes it with `extraction_status = "Review Required"` (score 0.60–0.85)
+- `GET /queue` — calls `get_pending_review()` → fetches all `Review Required` contracts → renders queue.html
+- `GET /review/{contract_id}` — calls `get_contract(id)` → renders review.html with full contract detail
+- `POST /review/{contract_id}` — calls `update_review_decision()` → if Approved, writes JSON to GCS curated zone → redirects to `/queue`
+
+| Score | Status | Review App behaviour |
+|---|---|---|
+| ≥ 0.85 | Approved | Written directly to GCS — never enters review queue |
+| 0.60–0.85 | Review Required | Written to Firestore/BigQuery — appears in `/queue` |
+| < 0.60 | Rejected | Logged only — does not appear in `/queue` |
+
 ---
 
 ### `knowledge_base/`
@@ -308,7 +322,6 @@ google-cloud-aiplatform==1.71.1   # Vector Search + Embeddings
 google-genai>=1.0.0               # Gemini (gemini_client, llm_judge_client)
 google-cloud-firestore==2.19.0
 google-cloud-bigquery==3.27.0
-google-cloud-logging==3.11.3
 fastapi==0.115.6
 uvicorn==0.32.1
 jinja2==3.1.4
@@ -359,6 +372,13 @@ BIGQUERY_DATASET=trace_contracts
 # Validation
 CONFIDENCE_THRESHOLD_APPROVE=0.85
 CONFIDENCE_THRESHOLD_REVIEW=0.60
+
+# Logging — LOG_TO_FILE=true writes to a rotating file locally
+LOG_LEVEL=INFO
+LOG_TO_FILE=false
+LOG_FILE_PATH=logs/trace_ai.log
+LOG_FILE_MAX_BYTES=5242880
+LOG_FILE_BACKUP_COUNT=3
 ```
 
 ---

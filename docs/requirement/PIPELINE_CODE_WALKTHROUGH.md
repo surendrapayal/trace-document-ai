@@ -37,7 +37,7 @@ import sys
 Standard library — `argparse` parses CLI flags, `json` serializes/deserializes stage outputs, `sys` is used to write errors to stderr and exit.
 
 ```python
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log, set_context, clear_context
 from trace_ai.extraction.document_ai_client import process_document
 from trace_ai.extraction.dlp_client import mask_pii
 from trace_ai.intelligence.rag_client import query as rag_query
@@ -202,10 +202,10 @@ Re-hydrates the `ContractRecord` and stamps it with the judge's `confidence_scor
         curated_uri = gcs_write(contract_record)
         write_audit_event(contract_id, "delivery", "written_to_curated", {"gcs_uri": curated_uri})
     elif extraction_status == "Review Required":
-        log("pipeline", contract_id, "Routed to human review queue")
+        log("Routed to human review queue")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")
     elif extraction_status == "Rejected":
-        log("pipeline", contract_id, "Contract rejected — manual intervention required", severity="WARNING")
+        log("Contract rejected — manual intervention required", severity="WARNING")
         write_audit_event(contract_id, "delivery", "rejected")
 ```
 Three routing branches. Only `"Approved"` triggers a GCS write — `curated_uri` stays `None` for the other two. Each branch writes its own audit event.
@@ -232,7 +232,7 @@ Final pipeline output. `curated_gcs_uri` is `None` for non-approved contracts.
 
 ```python
 def run(gcs_uri: str, contract_id: str) -> dict:
-    log("pipeline", contract_id, "Pipeline started", gcs_uri=gcs_uri)
+    log("Pipeline started", gcs_uri=gcs_uri)
 
     ocr_result     = run_ocr(gcs_uri, contract_id)
     dlp_result     = run_dlp(ocr_result["full_text"], contract_id)
@@ -242,7 +242,7 @@ def run(gcs_uri: str, contract_id: str) -> dict:
     judge_result   = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
     result         = run_deliver(normalize_result, judge_result, contract_id)
 
-    log("pipeline", contract_id, "Pipeline complete", **result)
+    log("Pipeline complete", **result)
     return result
 ```
 Calls each stage function in sequence, threading outputs into the next stage's inputs. Note that `dlp_result["masked_text"]` is passed to three separate stages — RAG (line 4), Gemini extraction (line 5), and LLM Judge (line 7). The judge needs the original masked text as the source of truth to compare against the extraction.
@@ -318,7 +318,7 @@ import uuid
 from pathlib import Path
 from trace_ai.common.gcs_client import upload
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 ```
@@ -361,7 +361,7 @@ Auto-generates a contract ID if one wasn't provided. `uuid4()` generates a rando
 Constructs the GCS blob path: `raw/contracts/CNT-XXX/contract.pdf`. `os.path.basename()` extracts just the filename from the full local path. `upload()` performs the actual GCS upload and returns the full `gs://` URI.
 
 ```python
-    log("ingestion", contract_id, "Contract uploaded to GCS raw zone", gcs_uri=gcs_uri)
+    log("Contract uploaded to GCS raw zone", gcs_uri=gcs_uri)
     return {"contract_id": contract_id, "gcs_uri": gcs_uri, "file_size_bytes": file_size}
 ```
 Logs the upload with the GCS URI as structured metadata. Returns all three values the caller needs — `contract_id` to track the contract, `gcs_uri` to pass to Stage 1 OCR, `file_size_bytes` for audit purposes.
@@ -392,7 +392,7 @@ Uses `pathlib.Path` for cleaner directory operations. Fails fast if the path isn
             result = upload_contract(str(pdf))
             results.append(result)
         except Exception as e:
-            log("ingestion", "batch", f"Failed to upload {pdf.name}", severity="ERROR", error=str(e))
+            log(f"Failed to upload {pdf.name}", severity="ERROR", error=str(e))
             results.append({"file": pdf.name, "error": str(e)})
 ```
 Processes each PDF independently. If one fails, the error is logged and appended to results as `{"file": ..., "error": ...}` — the loop continues rather than aborting the entire batch. This means a partial batch upload is possible and each file's outcome is visible in the output.
@@ -410,7 +410,7 @@ Processes each PDF independently. If one fails, the error is logged and appended
 from google.cloud import documentai
 from trace_ai.config import config
 from trace_ai.common.gcs_client import download_bytes
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.extraction.extraction_models import ExtractionResult, KeyValuePair, ExtractedTable
 ```
 `documentai` is the Google Cloud Document AI client library. `download_bytes` fetches raw bytes from GCS. `ExtractionResult`, `KeyValuePair`, `ExtractedTable` are the Pydantic output models defined in `extraction_models.py`.
@@ -461,7 +461,7 @@ Document AI stores all text in a single `document.text` string. Individual field
 
 ```python
 def process_document(gcs_uri: str, contract_id: str) -> ExtractionResult:
-    log("extraction", contract_id, "Submitting to Document AI", gcs_uri=gcs_uri)
+    log("Submitting to Document AI", gcs_uri=gcs_uri)
 
     bucket_name = gcs_uri.replace("gs://", "").split("/")[0]
     blob_name = "/".join(gcs_uri.replace("gs://", "").split("/")[1:])

@@ -367,6 +367,61 @@ PDF bytes
 
 ---
 
+## Review App — Human Review Flow
+
+**Modules**: `review_app/routes/queue.py`, `review_app/routes/review.py`
+**Templates**: `review_app/templates/queue.html`, `review_app/templates/review.html`
+**GCP services**: Firestore or BigQuery (via `storage_backend`), GCS Curated Zone
+
+**Start the review app**:
+```bash
+uvicorn trace_ai.review_app.main:app --reload --port 8080
+```
+
+**How templates work**:
+- `queue.html` and `review.html` are static Jinja2 template files — they are never generated, they exist permanently in the repo under `review_app/templates/`
+- Jinja2 renders them at request time by injecting live contract data fetched from Firestore/BigQuery
+- No HTML files are written to disk — the rendered HTML is returned directly in the HTTP response
+
+**When a contract appears in the queue**:
+A contract appears in `/queue` only when Stage 7 delivery writes it to the operational store with `extraction_status = "Review Required"` — i.e. LLM Judge score was between 0.60 and 0.85.
+
+| Score | Status | Review App |
+|---|---|---|
+| ≥ 0.85 | Approved | Written directly to GCS — never enters review queue |
+| 0.60–0.85 | Review Required | Written to Firestore/BigQuery — appears in `/queue` |
+| < 0.60 | Rejected | Logged only — does not appear in `/queue` |
+
+**Request flow**:
+
+```
+Browser: GET /queue
+        │
+        ▼
+queue.py → get_pending_review()        ← Firestore/BigQuery: all extraction_status="Review Required"
+        │
+        ▼
+Jinja2 renders queue.html              ← injects contracts list
+        │
+        ▼
+Browser: click contract → GET /review/CNT-XXX
+        │
+        ▼
+review.py → get_contract("CNT-XXX")    ← Firestore/BigQuery: single contract by ID
+        │
+        ▼
+Jinja2 renders review.html             ← injects full contract detail
+        │
+        ▼
+Reviewer submits → POST /review/CNT-XXX
+        │
+        ├── update_review_decision()   ← writes decision + audit event to Firestore/BigQuery
+        ├── if Approved → gcs_writer.write()  ← writes output.json to GCS curated zone
+        └── redirect → GET /queue
+```
+
+---
+
 ## Audit Events Reference
 
 | Stage | Event |

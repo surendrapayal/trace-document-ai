@@ -29,7 +29,6 @@ Upload PDF → Document AI OCR → Cloud DLP (PII masking) → RAG context (Vect
   - Vertex AI
   - Firestore (if using `STORAGE_BACKEND=firestore`)
   - BigQuery (if using `STORAGE_BACKEND=bigquery`)
-  - Cloud Logging
 - [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) configured:
   ```bash
   gcloud auth application-default login
@@ -225,6 +224,12 @@ uvicorn trace_ai.review_app.main:app --reload --port 8080
 
 Open [http://localhost:8080/queue](http://localhost:8080/queue) to see pending contracts.
 
+**How it works**:
+- `queue.html` and `review.html` are static Jinja2 templates in the repo — never generated at runtime
+- A contract appears in the queue only when Stage 7 writes it with `extraction_status = "Review Required"` (LLM Judge score 0.60–0.85)
+- Reviewer opens `/queue` → clicks a contract → reviews all extracted fields → submits Approve or Reject
+- Approved contracts are written to GCS curated zone and the decision is recorded in Firestore/BigQuery
+
 ---
 
 ## Knowledge Base
@@ -297,3 +302,6 @@ See `.env.example` for the full list. Key variables:
 | `BIGQUERY_DATASET` | BigQuery dataset name (when `STORAGE_BACKEND=bigquery`) |
 | `CONFIDENCE_THRESHOLD_APPROVE` | Default: `0.85` |
 | `CONFIDENCE_THRESHOLD_REVIEW` | Default: `0.60` |
+| `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` — default: `INFO` |
+| `LOG_TO_FILE` | `true` to write logs to a rotating file locally — default: `false` |
+| `LOG_FILE_PATH` | Log file path — default: `logs/trace_ai.log` |
