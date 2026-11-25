@@ -344,13 +344,76 @@ ValidationResult
 
 ### Confidence routing (`confidence_scorer.py`)
 
-| Score | Status | Action |
+The two thresholds divide the 0.0–1.0 score range into three zones:
+
+```
+0.0 ──────────────────────────────────────────────────────── 1.0
+
+│←────── Rejected ──────→│←── Review Required ──→│←─ Approved ─→│
+0.0                    REVIEW                  APPROVE          1.0
+                       (0.60)                  (0.85)
+```
+
+| Score range | `extraction_status` | Action |
 |---|---|---|
-| `≥ CONFIDENCE_THRESHOLD_APPROVE` (default 0.85) | `Approved` | Written to GCS curated zone |
-| `≥ CONFIDENCE_THRESHOLD_REVIEW` (default 0.60) | `Review Required` | Held in review queue |
-| `< CONFIDENCE_THRESHOLD_REVIEW` | `Rejected` | Logged, manual intervention |
+| `≥ CONFIDENCE_THRESHOLD_APPROVE` (default `0.85`) | `Approved` | Written directly to GCS curated zone — no human review needed |
+| `≥ CONFIDENCE_THRESHOLD_REVIEW` and `< APPROVE` (default `0.60–0.85`) | `Review Required` | Written to Firestore/BigQuery — appears in `/queue` for human review |
+| `< CONFIDENCE_THRESHOLD_REVIEW` (default `< 0.60`) | `Rejected` | Logged only — too low quality even for human review to salvage reliably |
 
 `contract_record.confidence_score` and `contract_record.extraction_status` are updated with the judge's results before delivery.
+
+---
+
+### What `overall_confidence` means
+
+The score is not rule-based. It is Gemini's own assessment of how faithfully the
+extracted JSON represents the source contract text. A score of `0.91` means Gemini
+is 91% confident the extraction is accurate. The judge scores all 7 sections
+independently via `field_scores` and derives `overall_confidence` from those.
+
+**What causes the score to drop:**
+
+| Issue | Impact |
+|---|---|
+| Missing required field (`bank_name`, `merchant_legal_name`) | Large drop |
+| Wrong billing model (`Flat Rate` extracted as `IC++`) | Large drop |
+| Wrong fee amounts or missing fees from the recurring fees table | Moderate drop |
+| Owner/officer section incomplete or missing an owner | Moderate drop |
+| Minor formatting differences (`0.910%` vs `0.91%`) | Small or no drop |
+| PII fields null because DLP masked them | No drop — judge knows DLP masking is expected |
+| `$0.00` fees missing (waived fees not extracted) | Moderate drop |
+
+---
+
+### Best Practice Threshold Values
+
+There is no universal answer — it depends on risk tolerance and review capacity.
+
+| Scenario | `APPROVE` | `REVIEW` | Reasoning |
+|---|---|---|---|
+| Development / POC | `1.0` | `0.0` | Forces every contract into review queue — lets you manually verify all extractions and calibrate |
+| High-trust production (default) | `0.85` | `0.60` | Good balance — auto-approves clean extractions, catches genuinely bad ones |
+| High-volume, lower-risk | `0.80` | `0.55` | Approves more automatically, smaller review queue |
+| Regulated / financial compliance | `0.90` | `0.70` | Stricter — fewer auto-approvals, larger review queue |
+| Zero tolerance for errors | `0.95` | `0.80` | Almost everything goes to human review |
+
+**Practical guidance:**
+
+- Start with `CONFIDENCE_THRESHOLD_APPROVE=1.0` and `CONFIDENCE_THRESHOLD_REVIEW=0.0` during
+  development — every contract hits the review queue so you can see all extractions and calibrate
+- After processing 20–30 real contracts, look at the score distribution. If most contracts
+  score 0.88–0.95, set `APPROVE=0.85` to auto-approve the bulk and only review edge cases
+- Never set `REVIEW` below `0.50` in production — below that, the extraction is so poor
+  that human review is unlikely to salvage it reliably
+- The gap between `REVIEW` and `APPROVE` (the review band) should be wide enough to catch
+  genuinely ambiguous cases — a gap of `0.20–0.25` is typical
+- Threshold changes are **not retroactive** — existing records in Firestore/BigQuery keep
+  their current `extraction_status`. Only newly processed contracts use the new thresholds
+
+**For Heartland contracts specifically** — the 4 KB documents are well-structured and
+Heartland contracts follow a fixed 4-page format, so scores tend to cluster high
+(`0.85–0.95`) for clean digital PDFs. The defaults of `0.85` / `0.60` are appropriate
+for production once the KB is properly indexed.
 
 ---
 
