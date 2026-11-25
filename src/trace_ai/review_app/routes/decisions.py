@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templa
 @router.get("/approved", response_class=HTMLResponse)
 async def approved(request: Request):
     contracts = list_contracts(ExtractionStatus.APPROVED.value)
-    contracts.sort(key=lambda c: c.get("reviewed_at", ""), reverse=True)
+    contracts.sort(key=lambda c: c.get("reviewed_at") or "", reverse=True)
     log("Approved contracts fetched", severity="DEBUG", count=len(contracts))
     return templates.TemplateResponse("decisions.html", {
         "request": request,
@@ -26,7 +26,7 @@ async def approved(request: Request):
 @router.get("/rejected", response_class=HTMLResponse)
 async def rejected(request: Request):
     contracts = list_contracts(ExtractionStatus.REJECTED.value)
-    contracts.sort(key=lambda c: c.get("reviewed_at", ""), reverse=True)
+    contracts.sort(key=lambda c: c.get("reviewed_at") or "", reverse=True)
     log("Rejected contracts fetched", severity="DEBUG", count=len(contracts))
     return templates.TemplateResponse("decisions.html", {
         "request": request,
