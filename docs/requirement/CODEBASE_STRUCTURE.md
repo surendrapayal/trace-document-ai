@@ -247,10 +247,13 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 | `extraction_status` | STRING | Pending / Approved / Review Required / Rejected |
 | `field_scores` | JSON | Per-section LLM Judge scores e.g. `{"credit_card_pricing": 0.54, ...}` |
 | `judge_issues` | JSON | List of specific issues flagged by LLM Judge |
+| `source_pdf_uri` | STRING | GCS URI of the raw input PDF |
+| `page_count` | INT64 | Number of pages in the PDF (from OCR stage) |
 | `file_hash` | STRING | SHA256 hash of original PDF |
 | `extracted_at` | STRING | ISO timestamp of extraction |
 | `reviewed_by` | STRING | Reviewer name (human review only) |
 | `review_notes` | STRING | Reviewer notes (human review only) |
+| `reviewed_at` | STRING | ISO timestamp of human review decision |
 
 GCP Services used: `GCS Curated Zone`, `Firestore` or `BigQuery` (configured via `STORAGE_BACKEND`)
 

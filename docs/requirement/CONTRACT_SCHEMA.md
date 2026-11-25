@@ -191,10 +191,13 @@ class ContractRecord(BaseModel):
     extraction_status: ExtractionStatus = ExtractionStatus.PENDING
     field_scores: Optional[dict] = None    # Per-section LLM Judge scores e.g. {"credit_card_pricing": 0.54, ...}
     judge_issues: list[str] = []           # Specific issues flagged by LLM Judge
+    source_pdf_uri: Optional[str]          # GCS URI of the raw input PDF
+    page_count: Optional[int]              # Number of pages (from OCR stage)
     file_hash: Optional[str]               # SHA256 hash of the original PDF bytes
     extracted_at: Optional[str]
     reviewed_by: Optional[str]
     review_notes: Optional[str]
+    reviewed_at: Optional[str]             # ISO timestamp of human review decision
 ```
 
 ---
@@ -355,6 +358,8 @@ class ContractRecord(BaseModel):
     "banking_information": 0.96
   },
   "judge_issues": [],
+  "source_pdf_uri": "gs://<GCS_BUCKET>/raw/contracts/CNT-20240426-CHETSHOESLLC/contract.pdf",
+  "page_count": 8,
   "file_hash": "a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
   "extracted_at": "2024-04-26T11:35:00Z"
 }
@@ -509,6 +514,8 @@ class ContractRecord(BaseModel):
     "banking_information": 0.95
   },
   "judge_issues": [],
+  "source_pdf_uri": "gs://<GCS_BUCKET>/raw/contracts/CNT-20241031-FITCHBURGHISTORICAL/contract.pdf",
+  "page_count": 6,
   "file_hash": "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5",
   "extracted_at": "2024-10-31T10:32:00Z"
 }
