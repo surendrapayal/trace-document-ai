@@ -41,6 +41,25 @@ Each stage from 1–7 can be run individually via `--stage`. See [Running Indivi
 
 ---
 
+## Running the Pipeline
+
+**Process a local PDF (upload + process in one command):**
+```bash
+python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
+```
+
+**Process a PDF already in GCS:**
+```bash
+python -m trace_ai.pipeline --gcs-uri gs://<GCS_BUCKET>/raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
+```
+
+**Via CLI entry point (after `pip install -e .`):**
+```bash
+trace-pipeline --local-pdf /path/to/contract.pdf
+```
+
+---
+
 ## Running Individual Stages
 
 Pass `--stage <name>` to run a single stage. Each stage serializes its output to `--output` (JSON file) or stdout if omitted, and reads prior stage outputs via input flags.
