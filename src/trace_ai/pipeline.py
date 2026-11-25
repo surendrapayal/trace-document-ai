@@ -143,19 +143,21 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
 
 # ── Full pipeline ─────────────────────────────────────────────────────────────
 
-def run(gcs_uri: str, contract_id: str) -> dict:
+def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
     import uuid
     set_context(contract_id=contract_id, request_id=uuid.uuid4().hex[:8].upper(), stage="pipeline")
     log("Pipeline started", gcs_uri=gcs_uri)
 
     try:
-        ocr_result     = run_ocr(gcs_uri, contract_id)
-        dlp_result     = run_dlp(ocr_result["full_text"], contract_id)
-        rag_result     = run_rag(dlp_result["masked_text"], contract_id)
-        extract_result = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
+        ocr_result       = run_ocr(gcs_uri, contract_id)
+        dlp_result       = run_dlp(ocr_result["full_text"], contract_id)
+        rag_result       = run_rag(dlp_result["masked_text"], contract_id)
+        extract_result   = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
         normalize_result = run_normalize(extract_result, contract_id)
-        judge_result   = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
-        result         = run_deliver(normalize_result, judge_result, contract_id)
+        if file_hash:
+            normalize_result["file_hash"] = file_hash
+        judge_result     = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
+        result           = run_deliver(normalize_result, judge_result, contract_id)
     except Exception as e:
         log("Pipeline failed", severity="ERROR", error=str(e))
         raise
@@ -216,10 +218,11 @@ def main():
             sys.exit(1)
         processed, failed = [], []
         for blob in sorted(blobs):
-            cid = f"CNT-{blob.replace('/', '-').replace('.pdf', '').upper()[-12:]}"
+            import uuid
+            cid = f"CNT-{uuid.uuid4().hex[:12].upper()}"
             uri = f"gs://{bucket_name}/{blob}"
             try:
-                result = run(uri, cid)
+                result = run(uri, cid, None)
                 processed.append(result)
             except Exception as e:
                 failed.append({"gcs_uri": uri, "error": str(e)})
@@ -240,7 +243,7 @@ def main():
             for pdf in pdf_files:
                 try:
                     upload_result = upload_contract(str(pdf))
-                    result = run(upload_result["gcs_uri"], upload_result["contract_id"])
+                    result = run(upload_result["gcs_uri"], upload_result["contract_id"], upload_result.get("file_hash"))
                     processed.append(result)
                 except Exception as e:
                     failed.append({"file": pdf.name, "error": str(e)})
@@ -249,6 +252,7 @@ def main():
         upload_result = upload_contract(args.local_pdf, contract_id)
         gcs_uri = upload_result["gcs_uri"]
         contract_id = upload_result["contract_id"]
+        file_hash = upload_result.get("file_hash")
 
     if not args.stage:
         # Full pipeline
@@ -258,7 +262,7 @@ def main():
         if not contract_id:
             print("--contract-id is required when using --gcs-uri", file=sys.stderr)
             sys.exit(1)
-        result = run(gcs_uri, contract_id)
+        result = run(gcs_uri, contract_id, file_hash)
         print(json.dumps(result, indent=2))
         return
 

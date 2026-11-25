@@ -148,7 +148,7 @@ Handles contract file validation and upload to GCS Raw Zone. Called separately b
 
 | File | Responsibility |
 |------|----------------|
-| `upload_handler.py` | Validates file type (PDF only), size (≤50MB). Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/`. Returns contract_id and GCS URI. |
+| `upload_handler.py` | Validates file type (PDF only), size (≤50MB). Computes SHA256 `file_hash` and checks for duplicates via `get_contract_by_hash()` when `DUPLICATE_CHECK_ENABLED=true`. Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/`. Returns `contract_id`, `gcs_uri`, `file_size_bytes`, `file_hash`. |
 
 GCP Services used: `Google Cloud Storage`
 
@@ -230,8 +230,8 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 |------|----------------|
 | `gcs_writer.py` | Serializes ContractRecord to JSON and writes to `gs://<GCS_BUCKET>/<GCS_CURATED_PREFIX>/contracts/`. |
 | `storage_backend.py` | Factory — re-exports the correct backend functions based on `STORAGE_BACKEND` env var. |
-| `firestore_client.py` | Firestore implementation — upsert_contract, write_audit_event, get_contract, get_pending_review, update_review_decision. |
-| `bigquery_client.py` | BigQuery implementation — same 5-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
+| `firestore_client.py` | Firestore implementation — upsert_contract, write_audit_event, get_contract, get_contract_by_hash, get_pending_review, update_review_decision. |
+| `bigquery_client.py` | BigQuery implementation — same 6-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
 
 GCP Services used: `GCS Curated Zone`, `Firestore` or `BigQuery` (configured via `STORAGE_BACKEND`)
 
@@ -286,6 +286,7 @@ Standalone one-time maintenance scripts. Not part of the application package.
 | File | Responsibility |
 |------|----------------|
 | `create_index.py` | Creates and deploys Vertex AI Vector Search index and endpoint. Run once before kb_indexer. Prints index/endpoint IDs to add to .env. |
+| `create_bq_tables.py` | Creates BigQuery dataset and tables (`contracts`, `audit_events`). Run once before using `STORAGE_BACKEND=bigquery`. |
 
 ---
 
@@ -373,6 +374,9 @@ BIGQUERY_DATASET=trace_contracts
 CONFIDENCE_THRESHOLD_APPROVE=0.85
 CONFIDENCE_THRESHOLD_REVIEW=0.60
 
+# Duplicate detection
+DUPLICATE_CHECK_ENABLED=true
+
 # Logging — LOG_TO_FILE=true writes to a rotating file locally
 LOG_LEVEL=INFO
 LOG_TO_FILE=false
@@ -424,8 +428,14 @@ python -m trace_ai.knowledge_base.kb_indexer
 # Upload a contract PDF and process it
 python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 
+# Process all PDFs in a local folder
+python -m trace_ai.pipeline --local-pdf /path/to/folder/
+
 # Process a PDF already in GCS
 python -m trace_ai.pipeline --gcs-uri gs://<GCS_BUCKET>/raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
+
+# Process all PDFs under a GCS prefix
+python -m trace_ai.pipeline --gcs-uri gs://<GCS_BUCKET>/raw/contracts/
 
 # Start HITL review app
 uvicorn trace_ai.review_app.main:app --reload --port 8080

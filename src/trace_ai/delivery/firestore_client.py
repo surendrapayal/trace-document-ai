@@ -37,6 +37,17 @@ def get_contract(contract_id: str) -> dict | None:
     return doc.to_dict() if doc.exists else None
 
 
+def get_contract_by_hash(file_hash: str) -> dict | None:
+    docs = (
+        _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS)
+        .where("file_hash", "==", file_hash)
+        .limit(1)
+        .stream()
+    )
+    results = [d.to_dict() for d in docs]
+    return results[0] if results else None
+
+
 def get_pending_review() -> list[dict]:
     docs = (
         _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS)

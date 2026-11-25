@@ -158,6 +158,7 @@ class ContractRecord(BaseModel):
     banking_information: BankingInformation
     confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
     extraction_status: str = "Pending"
+    file_hash: Optional[str] = None
     extracted_at: Optional[str] = None
     reviewed_by: Optional[str] = None
     review_notes: Optional[str] = None

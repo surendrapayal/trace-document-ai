@@ -37,6 +37,7 @@ Clustered on `extraction_status` for efficient queue queries.
 | `banking_information` | JSON | NULLABLE | `ContractRecord.banking_information` | See BankingInformation fields below |
 | `confidence_score` | FLOAT64 | NULLABLE | `ContractRecord.confidence_score` | LLM Judge score — 0.0 to 1.0 |
 | `extraction_status` | STRING | NULLABLE | `ContractRecord.extraction_status` | `Approved`, `Review Required`, `Rejected`, `Pending` |
+| `file_hash` | STRING | NULLABLE | `ContractRecord.file_hash` | SHA256 hash of the original PDF bytes — used for duplicate detection |
 | `extracted_at` | STRING | NULLABLE | `ContractRecord.extracted_at` | ISO 8601 UTC timestamp |
 | `reviewed_by` | STRING | NULLABLE | `ContractRecord.reviewed_by` | Reviewer name (set after HITL review) |
 | `review_notes` | STRING | NULLABLE | `ContractRecord.review_notes` | Reviewer notes (set after HITL review) |

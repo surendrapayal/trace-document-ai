@@ -48,9 +48,19 @@ Each stage from 1–7 can be run individually via `--stage`. See [Running Indivi
 python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 ```
 
+**Process all PDFs in a local folder:**
+```bash
+python -m trace_ai.pipeline --local-pdf /path/to/folder/
+```
+
 **Process a PDF already in GCS:**
 ```bash
 python -m trace_ai.pipeline --gcs-uri gs://<GCS_BUCKET>/raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
+```
+
+**Process all PDFs under a GCS prefix:**
+```bash
+python -m trace_ai.pipeline --gcs-uri gs://<GCS_BUCKET>/raw/contracts/
 ```
 
 **Via CLI entry point (after `pip install -e .`):**
@@ -78,8 +88,8 @@ python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contra
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/ --output s0_ingest.json
 ```
 
-**Single file output**: `{ contract_id, gcs_uri, file_size_bytes }`  
-**Folder output**: `{ uploaded: [ { contract_id, gcs_uri, file_size_bytes }, ... ], total: N }`
+**Single file output**: `{ contract_id, gcs_uri, file_size_bytes, file_hash }`  
+**Folder output**: `{ uploaded: [ { contract_id, gcs_uri, file_size_bytes, file_hash }, ... ], total: N }`
 
 Note the `contract_id` and `gcs_uri` from the output — you need both for `--stage ocr`.
 
@@ -118,7 +128,7 @@ python -m trace_ai.pipeline --stage deliver \
 
 | Stage | `--input` reads | Extra input flag | `--output` writes |
 |---|---|---|---|
-| `ingest` | — | `--local-pdf` | `contract_id`, `gcs_uri`, `file_size_bytes` |
+| `ingest` | — | `--local-pdf` | `contract_id`, `gcs_uri`, `file_size_bytes`, `file_hash` |
 | `ocr` | — | `--gcs-uri` or `--local-pdf` | `full_text`, `key_value_pairs`, `tables`, `page_count` |
 | `dlp` | OCR output | — | `masked_text`, `pii_types` |
 | `rag` | DLP output | — | `rag_context` |
@@ -138,11 +148,22 @@ python -m trace_ai.pipeline --stage deliver \
 
 **What it does**:
 - Validates file exists, has `.pdf` extension, and is ≤ 50 MB
+- Computes SHA256 `file_hash` of the PDF bytes
+- When `DUPLICATE_CHECK_ENABLED=true` — queries `get_contract_by_hash()` and raises `ValueError` if the file was already processed, including the existing `contract_id` and status in the error message
 - Generates `contract_id` as `CNT-<12-char hex>` if not provided
 - Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/<contract_id>/<filename>`
 
 **Input**: local file path, optional `contract_id`  
-**Output**: `{ contract_id, gcs_uri, file_size_bytes }`
+**Output**: `{ contract_id, gcs_uri, file_size_bytes, file_hash }`
+
+**Folder support**: `--local-pdf folder/` uploads all `*.pdf` files sequentially. Each file runs independently — failures are captured per-file and the batch continues.
+
+**Duplicate behaviour**:
+
+| `DUPLICATE_CHECK_ENABLED` | Duplicate file | Behaviour |
+|---|---|---|
+| `true` (default) | Same file re-submitted | Raises `ValueError` with existing `contract_id` — upload blocked |
+| `false` | Same file re-submitted | Proceeds — new `contract_id` generated, file reprocessed |
 
 ---
 

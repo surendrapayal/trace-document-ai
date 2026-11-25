@@ -99,6 +99,8 @@ class Config:
     CONFIDENCE_THRESHOLD_APPROVE: float = float(os.getenv("CONFIDENCE_THRESHOLD_APPROVE", "0.85"))
     CONFIDENCE_THRESHOLD_REVIEW: float = float(os.getenv("CONFIDENCE_THRESHOLD_REVIEW", "0.60"))
 
+    DUPLICATE_CHECK_ENABLED: bool = os.getenv("DUPLICATE_CHECK_ENABLED", "true").lower() == "true"
+
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_TO_FILE: bool = os.getenv("LOG_TO_FILE", "false").lower() == "true"
     LOG_FILE_PATH: str = os.getenv("LOG_FILE_PATH", "logs/trace_ai.log")

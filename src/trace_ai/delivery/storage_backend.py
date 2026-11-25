@@ -5,6 +5,7 @@ if config.STORAGE_BACKEND == "bigquery":
         upsert_contract,
         write_audit_event,
         get_contract,
+        get_contract_by_hash,
         get_pending_review,
         update_review_decision,
     )
@@ -13,6 +14,7 @@ elif config.STORAGE_BACKEND == "firestore":
         upsert_contract,
         write_audit_event,
         get_contract,
+        get_contract_by_hash,
         get_pending_review,
         update_review_decision,
     )

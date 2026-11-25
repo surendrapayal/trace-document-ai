@@ -72,6 +72,15 @@ def get_contract(contract_id: str) -> dict | None:
     return dict(rows[0]) if rows else None
 
 
+def get_contract_by_hash(file_hash: str) -> dict | None:
+    query = f"SELECT * FROM `{_table('contracts')}` WHERE file_hash = @file_hash LIMIT 1"
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ScalarQueryParameter("file_hash", "STRING", file_hash)]
+    )
+    rows = list(_client.query(query, job_config=job_config).result())
+    return dict(rows[0]) if rows else None
+
+
 def get_pending_review() -> list[dict]:
     query = f"SELECT * FROM `{_table('contracts')}` WHERE extraction_status = 'Review Required'"
     return [dict(row) for row in _client.query(query).result()]
