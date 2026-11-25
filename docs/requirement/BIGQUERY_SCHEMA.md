@@ -37,13 +37,17 @@ Clustered on `extraction_status` for efficient queue queries.
 | `banking_information` | JSON | NULLABLE | `ContractRecord.banking_information` | See BankingInformation fields below |
 | `confidence_score` | FLOAT64 | NULLABLE | `ContractRecord.confidence_score` | LLM Judge score — 0.0 to 1.0 |
 | `extraction_status` | STRING | NULLABLE | `ContractRecord.extraction_status` | `Approved`, `Review Required`, `Rejected`, `Pending` |
+| `field_scores` | JSON | NULLABLE | `ContractRecord.field_scores` | Per-section LLM Judge scores e.g. `{"credit_card_pricing": 0.54, ...}` |
+| `judge_issues` | JSON | NULLABLE | `ContractRecord.judge_issues` | List of specific issues flagged by LLM Judge |
+| `source_pdf_uri` | STRING | NULLABLE | `ContractRecord.source_pdf_uri` | GCS URI of the raw input PDF |
+| `page_count` | INT64 | NULLABLE | `ContractRecord.page_count` | Number of pages in the PDF (from OCR stage) |
 | `file_hash` | STRING | NULLABLE | `ContractRecord.file_hash` | SHA256 hash of the original PDF bytes — used for duplicate detection |
 | `extracted_at` | STRING | NULLABLE | `ContractRecord.extracted_at` | ISO 8601 UTC timestamp |
 | `reviewed_by` | STRING | NULLABLE | `ContractRecord.reviewed_by` | Reviewer name (set after HITL review) |
 | `review_notes` | STRING | NULLABLE | `ContractRecord.review_notes` | Reviewer notes (set after HITL review) |
+| `reviewed_at` | STRING | NULLABLE | Set by `update_review_decision()` | ISO 8601 UTC — time of HITL decision |
 | `curated_gcs_uri` | STRING | NULLABLE | Set by `upsert_contract()` | GCS URI of final JSON output e.g. `gs://trace-curated/contracts/CNT-xxx/output.json` |
 | `updated_at` | STRING | NULLABLE | Set by `upsert_contract()` | ISO 8601 UTC — last upsert time |
-| `reviewed_at` | STRING | NULLABLE | Set by `update_review_decision()` | ISO 8601 UTC — time of HITL decision |
 
 ---
 
