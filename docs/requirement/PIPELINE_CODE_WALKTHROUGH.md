@@ -38,8 +38,8 @@ Standard library — `argparse` parses CLI flags, `json` serializes/deserializes
 
 ```python
 from trace_ai.common.logger import log, set_context, clear_context
-from trace_ai.extraction.document_ai_client import process_document
-from trace_ai.extraction.dlp_client import mask_pii
+from trace_ai.extraction.document_ai_client import process_document_cached
+from trace_ai.extraction.dlp_client import mask_pii_cached
 from trace_ai.intelligence.rag_client import query as rag_query
 from trace_ai.intelligence.gemini_client import extract_all
 from trace_ai.normalization.normalizer import normalize
@@ -49,7 +49,7 @@ from trace_ai.validation.confidence_scorer import route
 from trace_ai.delivery.gcs_writer import write as gcs_write
 from trace_ai.delivery.storage_backend import upsert_contract, write_audit_event
 ```
-Each import brings in exactly one function from each stage module. `rag_query` is aliased to avoid collision with Python's built-in `query`. `gcs_write` is aliased to avoid collision with the built-in `write`.
+Each import brings in exactly one function from each stage module. `rag_query` is aliased to avoid collision with Python's built-in `query`. `gcs_write` is aliased to avoid collision with the built-in `write`. `process_document_cached` and `mask_pii_cached` are the caching wrappers — they check GCS before calling the APIs.
 
 ---
 
@@ -64,14 +64,17 @@ def run_ocr(gcs_uri: str, contract_id: str) -> dict:
 Writes an audit event to Firestore/BigQuery before the stage begins — every stage is bookended by audit events so the full pipeline timeline is traceable.
 
 ```python
-    result = process_document(gcs_uri, contract_id)
+    result, cache_hit = process_document_cached(gcs_uri, contract_id)
 ```
-Calls `document_ai_client.process_document()` — downloads the PDF from GCS and submits it to Document AI. Returns an `ExtractionResult` Pydantic model.
+Calls `process_document_cached()` which first checks whether `processing/contracts/<contract_id>/ocr.json` already exists in GCS. If it does, the result is loaded from GCS and Document AI is not called. If not, Document AI is called and the result is written to GCS for future reuse. Returns `(ExtractionResult, cache_hit: bool)`.
 
 ```python
-    write_audit_event(contract_id, "extraction", "document_ai_complete", {"page_count": result.page_count})
+    write_audit_event(contract_id, "extraction", "document_ai_complete", {
+        "page_count": result.page_count,
+        "cache_hit": cache_hit,
+    })
 ```
-Writes the completion audit event, including `page_count` as metadata so you can see how many pages were processed.
+Writes the completion audit event including `page_count` and `cache_hit` — so the audit trail shows whether Document AI was actually called or the cached result was used.
 
 ```python
     return {
@@ -81,7 +84,7 @@ Writes the completion audit event, including `page_count` as metadata so you can
         "page_count": result.page_count,
     }
 ```
-Converts the Pydantic `ExtractionResult` to a plain dict so it can be serialized to JSON for `--output`. `model_dump()` converts each nested Pydantic model to a dict. Only `full_text` is used by downstream stages — `key_value_pairs` and `tables` are captured for completeness.
+Converts the Pydantic `ExtractionResult` to a plain dict so it can be serialized to JSON for `--output`. Only `full_text` is used by downstream stages.
 
 ---
 
@@ -90,11 +93,14 @@ Converts the Pydantic `ExtractionResult` to a plain dict so it can be serialized
 ```python
 def run_dlp(full_text: str, contract_id: str) -> dict:
     write_audit_event(contract_id, "extraction", "dlp_started")
-    masked_text, pii_types = mask_pii(full_text, contract_id)
-    write_audit_event(contract_id, "extraction", "dlp_complete", {"pii_types": pii_types})
+    (masked_text, pii_types), cache_hit = mask_pii_cached(full_text, contract_id)
+    write_audit_event(contract_id, "extraction", "dlp_complete", {
+        "pii_types": pii_types,
+        "cache_hit": cache_hit,
+    })
     return {"masked_text": masked_text, "pii_types": pii_types}
 ```
-Passes `full_text` from Stage 1 into `mask_pii()`. Returns two values — `masked_text` (PII replaced with mask characters) and `pii_types` (list of detected PII type names e.g. `["US_SOCIAL_SECURITY_NUMBER", "DATE_OF_BIRTH"]`). Both are stored in the output dict. `masked_text` is what every downstream stage (RAG, Gemini, LLM Judge) receives — raw PII never reaches an LLM.
+`mask_pii_cached()` first checks whether `processing/contracts/<contract_id>/masked.json` already exists in GCS. If it does, the masked text and PII types are loaded from GCS and Cloud DLP is not called. If not, DLP is called and the result is written to GCS. Returns `((masked_text, pii_types), cache_hit: bool)`. The `cache_hit` flag is recorded in the audit event. `masked_text` is what every downstream stage (RAG, Gemini, LLM Judge) receives — raw PII never reaches an LLM. The `masked.json` file in GCS is also a durable compliance artifact proving PII was removed before any LLM call.
 
 ---
 
@@ -251,6 +257,8 @@ def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
         normalize_result = run_normalize(extract_result, contract_id)
         if file_hash:
             normalize_result["file_hash"] = file_hash
+        normalize_result["source_pdf_uri"] = gcs_uri
+        normalize_result["page_count"] = ocr_result["page_count"]
         judge_result     = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
         result           = run_deliver(normalize_result, judge_result, contract_id)
     except Exception as e:

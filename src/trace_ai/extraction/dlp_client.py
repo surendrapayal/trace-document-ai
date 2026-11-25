@@ -1,5 +1,7 @@
+import json
 from google.cloud import dlp_v2
 from trace_ai.config import config
+from trace_ai.common.gcs_client import upload_json, blob_exists, download_json
 from trace_ai.common.logger import log
 
 _PII_INFO_TYPES = [
@@ -81,3 +83,22 @@ def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
     )
 
     return response.item.value, detected_types
+
+
+def mask_pii_cached(text: str, contract_id: str) -> tuple[tuple[str, list[str]], bool]:
+    """Returns ((masked_text, pii_types), cache_hit). Reads from GCS processing zone if available,
+    otherwise calls Cloud DLP and writes the result to GCS for future reuse."""
+    blob_name = f"{config.GCS_PROCESSING_PREFIX}/contracts/{contract_id}/masked.json"
+
+    if blob_exists(config.GCS_BUCKET, blob_name):
+        log("DLP cache hit -- loading from GCS processing zone", contract_id=contract_id)
+        data = download_json(config.GCS_BUCKET, blob_name)
+        return (data["masked_text"], data["pii_types"]), True
+
+    masked_text, pii_types = mask_pii(text, contract_id)
+
+    payload = json.dumps({"masked_text": masked_text, "pii_types": pii_types})
+    upload_json(payload, config.GCS_BUCKET, blob_name)
+    log("DLP result cached to GCS processing zone", contract_id=contract_id, blob=blob_name)
+
+    return (masked_text, pii_types), False

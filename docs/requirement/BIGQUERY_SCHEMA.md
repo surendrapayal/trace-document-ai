@@ -367,9 +367,9 @@ Append-only event log. One row written per pipeline stage via `delivery/bigquery
 | `stage` | `event` | `details` fields |
 |---|---|---|
 | `extraction` | `document_ai_started` | — |
-| `extraction` | `document_ai_complete` | `page_count` |
+| `extraction` | `document_ai_complete` | `page_count`, `cache_hit` |
 | `extraction` | `dlp_started` | — |
-| `extraction` | `dlp_complete` | `pii_types` (list of detected PII type names) |
+| `extraction` | `dlp_complete` | `pii_types` (list of detected PII type names), `cache_hit` |
 | `intelligence` | `rag_query_started` | — |
 | `intelligence` | `rag_query_complete` | — |
 | `intelligence` | `gemini_extraction_started` | — |

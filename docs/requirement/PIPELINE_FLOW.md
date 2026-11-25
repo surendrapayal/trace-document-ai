@@ -612,13 +612,21 @@ curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Rev
 
 ## Audit Events Reference
 
-| Stage | Event |
-|---|---|
-| `extraction` | `document_ai_started`, `document_ai_complete` |
-| `extraction` | `dlp_started`, `dlp_complete` |
-| `intelligence` | `rag_query_started`, `rag_query_complete` |
-| `intelligence` | `gemini_extraction_started`, `gemini_extraction_complete` |
-| `normalization` | `normalization_started`, `normalization_complete` |
-| `validation` | `llm_judge_started`, `llm_judge_complete` |
-| `delivery` | `written_to_curated`, `routed_to_review_queue`, `rejected` |
-| `delivery` | `webhook_delivered`, `webhook_failed` (when `WEBHOOK_ENABLED=true`) |
+| Stage | Event | `details` fields |
+|---|---|---|
+| `extraction` | `document_ai_started` | — |
+| `extraction` | `document_ai_complete` | `page_count`, `cache_hit` |
+| `extraction` | `dlp_started` | — |
+| `extraction` | `dlp_complete` | `pii_types`, `cache_hit` |
+| `intelligence` | `rag_query_started` | — |
+| `intelligence` | `rag_query_complete` | — |
+| `intelligence` | `gemini_extraction_started` | — |
+| `intelligence` | `gemini_extraction_complete` | — |
+| `normalization` | `normalization_started` | — |
+| `normalization` | `normalization_complete` | — |
+| `validation` | `llm_judge_started` | — |
+| `validation` | `llm_judge_complete` | `confidence_score`, `verdict`, `issues`, `critical_failures` |
+| `delivery` | `written_to_curated` | `gcs_uri` |
+| `delivery` | `routed_to_review_queue` | — |
+| `delivery` | `rejected` | — |
+| `delivery` | `webhook_delivered`, `webhook_failed` | (when `WEBHOOK_ENABLED=true`) |

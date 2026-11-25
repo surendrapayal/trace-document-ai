@@ -139,7 +139,7 @@ Shared utilities used across all modules.
 
 | File | Responsibility |
 |------|----------------|
-| `gcs_client.py` | Shared helper for GCS upload, download, upload_json, list_blobs across all zones. |
+| `gcs_client.py` | Shared helper for GCS upload, download, upload_json, download_json, blob_exists, list_blobs across all zones. |
 | `logger.py` | Structured JSON logger with MDC context (`contextvars`). Emits one JSON line per log call to stdout always, and optionally to a rotating file when `LOG_TO_FILE=true`. No GCP dependency. |
 
 GCP Services used: `GCS`
@@ -164,8 +164,8 @@ Calls Document AI and Cloud DLP to extract and sanitize contract content.
 
 | File | Responsibility |
 |------|----------------|
-| `document_ai_client.py` | Submits PDF to Document AI Form Parser with `enable_native_pdf_parsing=True`. Handles both digital and scanned PDFs. Returns full text, key-value pairs, and tables. |
-| `dlp_client.py` | Calls Cloud DLP to detect and mask PII (SSN, DOB, routing numbers, etc.) before passing to Gemini. |
+| `document_ai_client.py` | Submits PDF to Document AI Form Parser with `enable_native_pdf_parsing=True`. Handles both digital and scanned PDFs. Returns full text, key-value pairs, and tables. Caches result to `gs://<GCS_BUCKET>/processing/contracts/<id>/ocr.json` — skips Document AI on re-run. |
+| `dlp_client.py` | Calls Cloud DLP to detect and mask PII (SSN, DOB, routing numbers, etc.) before passing to Gemini. Caches result to `gs://<GCS_BUCKET>/processing/contracts/<id>/masked.json` — skips DLP on re-run. |
 | `extraction_models.py` | Pydantic models for OCR output — ExtractionResult, KeyValuePair, ExtractedTable. |
 
 GCP Services used: `Document AI`, `Cloud DLP`

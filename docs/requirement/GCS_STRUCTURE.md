@@ -26,7 +26,11 @@ gs://<GCS_BUCKET>/
 │       └── <contract_id>/
 │           └── <filename>.pdf          ← uploaded by upload_handler.py (Stage 0)
 │
-├── processing/                         ← reserved prefix, not written by current pipeline
+├── processing/
+│   └── contracts/
+│       └── <contract_id>/
+│           ├── ocr.json                ← written by document_ai_client.py (Stage 1)
+│           └── masked.json             ← written by dlp_client.py (Stage 2)
 │
 ├── curated/
 │   └── contracts/
@@ -67,9 +71,33 @@ The `contract_id` subfolder isolates each contract so multiple files for the sam
 
 **Env var**: `GCS_PROCESSING_PREFIX` (default: `processing`)
 
-**Written by**: Not currently written by the pipeline — reserved prefix.
+**Written by**: `extraction/document_ai_client.py` (Stage 1) and `extraction/dlp_client.py` (Stage 2)
 
-**Purpose**: Intended for storing OCR artifacts (raw Document AI output) and DLP intermediate results between stages. Currently the pipeline passes these in-memory between stages rather than writing to GCS. This prefix is defined in `.env` for future use if intermediate persistence is needed (e.g. for debugging, resumable pipelines, or audit requirements).
+**Path patterns**:
+```
+gs://<GCS_BUCKET>/processing/contracts/<contract_id>/ocr.json
+gs://<GCS_BUCKET>/processing/contracts/<contract_id>/masked.json
+```
+
+**What lands here**:
+
+| File | Written by | Contents |
+|---|---|---|
+| `ocr.json` | `process_document_cached()` after Stage 1 | `full_text`, `key_value_pairs`, `tables`, `page_count` from Document AI |
+| `masked.json` | `mask_pii_cached()` after Stage 2 | `masked_text`, `pii_types` after Cloud DLP masking |
+
+**Skip-if-exists (cache) behaviour**: Before calling Document AI or Cloud DLP, the pipeline checks whether the output file already exists in GCS. If it does, the API call is skipped entirely and the cached result is loaded from GCS instead. This means:
+- Re-running the pipeline for the same `contract_id` never calls Document AI or DLP again — no repeated API cost
+- If the pipeline fails at Stage 3 or later, you can restart and Stages 1 and 2 are free
+- The `cache_hit` flag is recorded in the audit event (`document_ai_complete` / `dlp_complete`) so you can see in the audit trail whether the API was called or the cache was used
+
+**Example**:
+```
+gs://my-trace-ai-bucket/processing/contracts/CNT-a1b2c3d4e5f6/ocr.json
+gs://my-trace-ai-bucket/processing/contracts/CNT-a1b2c3d4e5f6/masked.json
+```
+
+**Compliance value**: `masked.json` proves that PII was removed before any LLM call. The file exists as a durable artifact showing exactly what text Gemini received — with all PII replaced by mask characters.
 
 ---
 
@@ -127,7 +155,8 @@ User uploads PDF
 gs://<GCS_BUCKET>/raw/contracts/<contract_id>/<file>.pdf
         │
         │  Stage 1: Document AI reads PDF bytes from raw/
-        │  Stage 2: DLP masks text in memory
+        │           writes ocr.json to processing/
+        │  Stage 2: DLP masks text, writes masked.json to processing/
         │  Stage 3: RAG reads chunks from kb/chunks/
         │  Stage 4: Gemini extracts from masked text + RAG context
         │  Stage 5: Normalizer builds ContractRecord
@@ -151,4 +180,4 @@ Contracts that are `Review Required` or `Rejected` are written to Firestore/BigQ
 | Contract metadata, status, scores | Firestore (`contracts` collection) or BigQuery (`contracts` table) |
 | Audit events per pipeline stage | Firestore (`audit_events` collection) or BigQuery (`audit_events` table) |
 | Vector embeddings | Vertex AI Vector Search index (not GCS) |
-| OCR text, masked text, RAG context | In-memory only — passed between pipeline stages, never written to disk or GCS |
+| OCR text, masked text, RAG context | `processing/` in GCS (ocr.json, masked.json) for OCR and DLP. RAG context is in-memory only. |

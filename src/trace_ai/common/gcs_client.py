@@ -29,6 +29,16 @@ def upload_json(data: str, bucket_name: str, blob_name: str) -> str:
     return f"gs://{bucket_name}/{blob_name}"
 
 
+def download_json(bucket_name: str, blob_name: str) -> dict:
+    import json
+    data = download_bytes(bucket_name, blob_name)
+    return json.loads(data)
+
+
+def blob_exists(bucket_name: str, blob_name: str) -> bool:
+    return _client.bucket(bucket_name).blob(blob_name).exists()
+
+
 def list_blobs(bucket_name: str, prefix: str = "") -> list[str]:
     blobs = [b.name for b in _client.list_blobs(bucket_name, prefix=prefix)]
     log("GCS list blobs", severity="DEBUG", bucket=bucket_name, prefix=prefix, count=len(blobs))

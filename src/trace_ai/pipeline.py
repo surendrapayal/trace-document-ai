@@ -26,8 +26,8 @@ import json
 import sys
 
 from trace_ai.common.logger import log, set_context, clear_context
-from trace_ai.extraction.document_ai_client import process_document
-from trace_ai.extraction.dlp_client import mask_pii
+from trace_ai.extraction.document_ai_client import process_document_cached
+from trace_ai.extraction.dlp_client import mask_pii_cached
 from trace_ai.intelligence.rag_client import query as rag_query
 from trace_ai.intelligence.gemini_client import extract_all
 from trace_ai.normalization.normalizer import normalize
@@ -45,8 +45,11 @@ from trace_ai.delivery.webhook_client import send as webhook_send
 def run_ocr(gcs_uri: str, contract_id: str) -> dict:
     set_context(stage="extraction")
     write_audit_event(contract_id, "extraction", "document_ai_started")
-    result = process_document(gcs_uri, contract_id)
-    write_audit_event(contract_id, "extraction", "document_ai_complete", {"page_count": result.page_count})
+    result, cache_hit = process_document_cached(gcs_uri, contract_id)
+    write_audit_event(contract_id, "extraction", "document_ai_complete", {
+        "page_count": result.page_count,
+        "cache_hit": cache_hit,
+    })
     return {
         "full_text": result.full_text,
         "key_value_pairs": [kv.model_dump() for kv in result.key_value_pairs],
@@ -58,8 +61,11 @@ def run_ocr(gcs_uri: str, contract_id: str) -> dict:
 def run_dlp(full_text: str, contract_id: str) -> dict:
     set_context(stage="extraction")
     write_audit_event(contract_id, "extraction", "dlp_started")
-    masked_text, pii_types = mask_pii(full_text, contract_id)
-    write_audit_event(contract_id, "extraction", "dlp_complete", {"pii_types": pii_types})
+    (masked_text, pii_types), cache_hit = mask_pii_cached(full_text, contract_id)
+    write_audit_event(contract_id, "extraction", "dlp_complete", {
+        "pii_types": pii_types,
+        "cache_hit": cache_hit,
+    })
     return {"masked_text": masked_text, "pii_types": pii_types}
 
 

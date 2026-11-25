@@ -1,8 +1,9 @@
 import io
+import json
 from google.cloud import documentai
 from pypdf import PdfReader, PdfWriter
 from trace_ai.config import config
-from trace_ai.common.gcs_client import download_bytes
+from trace_ai.common.gcs_client import download_bytes, upload_json, blob_exists, download_json
 from trace_ai.common.logger import log
 from trace_ai.extraction.extraction_models import ExtractionResult, KeyValuePair, ExtractedTable
 
@@ -120,3 +121,33 @@ def process_document(gcs_uri: str, contract_id: str) -> ExtractionResult:
         tables=all_tables,
         page_count=total_pages,
     )
+
+
+def process_document_cached(gcs_uri: str, contract_id: str) -> tuple[ExtractionResult, bool]:
+    """Returns (ExtractionResult, cache_hit). Reads from GCS processing zone if available,
+    otherwise calls Document AI and writes the result to GCS for future reuse."""
+    blob_name = f"{config.GCS_PROCESSING_PREFIX}/contracts/{contract_id}/ocr.json"
+
+    if blob_exists(config.GCS_BUCKET, blob_name):
+        log("OCR cache hit -- loading from GCS processing zone", contract_id=contract_id)
+        data = download_json(config.GCS_BUCKET, blob_name)
+        result = ExtractionResult(
+            full_text=data["full_text"],
+            key_value_pairs=[KeyValuePair(**kv) for kv in data["key_value_pairs"]],
+            tables=[ExtractedTable(**t) for t in data["tables"]],
+            page_count=data["page_count"],
+        )
+        return result, True
+
+    result = process_document(gcs_uri, contract_id)
+
+    payload = json.dumps({
+        "full_text": result.full_text,
+        "key_value_pairs": [kv.model_dump() for kv in result.key_value_pairs],
+        "tables": [t.model_dump() for t in result.tables],
+        "page_count": result.page_count,
+    })
+    upload_json(payload, config.GCS_BUCKET, blob_name)
+    log("OCR result cached to GCS processing zone", contract_id=contract_id, blob=blob_name)
+
+    return result, False
