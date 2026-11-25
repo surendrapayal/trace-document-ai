@@ -119,6 +119,8 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
     extraction_status = judge_result["verdict"]
     contract_record.confidence_score = judge_result["overall_confidence"]
     contract_record.extraction_status = extraction_status
+    contract_record.field_scores = judge_result["field_scores"]
+    contract_record.judge_issues = judge_result["issues"]
 
     curated_uri = None
 

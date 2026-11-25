@@ -360,7 +360,7 @@ The two thresholds divide the 0.0–1.0 score range into three zones:
 | `≥ CONFIDENCE_THRESHOLD_REVIEW` and `< APPROVE` (default `0.60–0.85`) | `Review Required` | Written to Firestore/BigQuery — appears in `/queue` for human review |
 | `< CONFIDENCE_THRESHOLD_REVIEW` (default `< 0.60`) | `Rejected` | Logged only — too low quality even for human review to salvage reliably |
 
-`contract_record.confidence_score` and `contract_record.extraction_status` are updated with the judge's results before delivery.
+`contract_record.confidence_score` and `contract_record.extraction_status` are updated with the judge's results before delivery. `contract_record.field_scores` and `contract_record.judge_issues` are also stamped here and persisted to Firestore/BigQuery — making them available to `review.html` when a contract is loaded for human review.
 
 ---
 

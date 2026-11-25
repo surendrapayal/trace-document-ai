@@ -192,8 +192,14 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
     extraction_status = judge_result["verdict"]
     contract_record.confidence_score = judge_result["overall_confidence"]
     contract_record.extraction_status = extraction_status
+    contract_record.field_scores = judge_result["field_scores"]
+    contract_record.judge_issues = judge_result["issues"]
 ```
-Re-hydrates the `ContractRecord` from the plain dict (which now includes `file_hash` if it was injected by `run()`). Stamps it with the judge's `confidence_score` and `extraction_status` — these two fields were set to defaults (`0.0`, `"Pending"`) by the normalizer and are now overwritten with the real values.
+Re-hydrates the `ContractRecord` from the plain dict. Stamps it with four fields from the judge result:
+- `confidence_score` -- the overall 0.0-1.0 score
+- `extraction_status` -- Approved, Review Required, or Rejected
+- `field_scores` -- per-section scores dict e.g. `{"credit_card_pricing": 0.54, ...}`. Stored as JSON in Firestore/BigQuery and surfaced in review.html as section-level score badges
+- `judge_issues` -- list of specific discrepancies flagged by the judge. Displayed at the top of review.html so reviewers know exactly what to fix
 
 ```python
     curated_uri = None

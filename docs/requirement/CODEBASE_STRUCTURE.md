@@ -238,6 +238,20 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 | `bigquery_client.py` | BigQuery implementation -- same 6-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
 | `webhook_client.py` | Pushes approved `ContractRecord` JSON to third party endpoint via HTTP POST. 3 retries with exponential backoff (2s, 4s, 8s). Disabled by default (`WEBHOOK_ENABLED=false`). |
 
+`ContractRecord` top-level fields persisted to both backends:
+
+| Field | Type | Description |
+|---|---|---|
+| `contract_id` | STRING | System generated ID |
+| `confidence_score` | FLOAT64 | Overall LLM Judge score (0.0-1.0) |
+| `extraction_status` | STRING | Pending / Approved / Review Required / Rejected |
+| `field_scores` | JSON | Per-section LLM Judge scores e.g. `{"credit_card_pricing": 0.54, ...}` |
+| `judge_issues` | JSON | List of specific issues flagged by LLM Judge |
+| `file_hash` | STRING | SHA256 hash of original PDF |
+| `extracted_at` | STRING | ISO timestamp of extraction |
+| `reviewed_by` | STRING | Reviewer name (human review only) |
+| `review_notes` | STRING | Reviewer notes (human review only) |
+
 GCP Services used: `GCS Curated Zone`, `Firestore` or `BigQuery` (configured via `STORAGE_BACKEND`)
 
 ---

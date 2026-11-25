@@ -50,6 +50,8 @@ contracts_schema = [
     # Top-level scalar fields
     bigquery.SchemaField("confidence_score", "FLOAT64"),
     bigquery.SchemaField("extraction_status", "STRING"),
+    bigquery.SchemaField("field_scores", "JSON"),
+    bigquery.SchemaField("judge_issues", "JSON"),
     bigquery.SchemaField("file_hash", "STRING"),
     bigquery.SchemaField("extracted_at", "STRING"),
     bigquery.SchemaField("reviewed_by", "STRING"),

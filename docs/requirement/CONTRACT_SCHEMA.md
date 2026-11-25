@@ -188,8 +188,10 @@ class ContractRecord(BaseModel):
 
     # ── Validation ────────────────────────────────────────────
     confidence_score: float = Field(ge=0.0, le=1.0)
-    extraction_status: ExtractionStatus = ExtractionStatus.PENDING  # Approved, Review Required, Rejected, Pending
-    file_hash: Optional[str]                # SHA256 hash of the original PDF bytes
+    extraction_status: ExtractionStatus = ExtractionStatus.PENDING
+    field_scores: Optional[dict] = None    # Per-section LLM Judge scores e.g. {"credit_card_pricing": 0.54, ...}
+    judge_issues: list[str] = []           # Specific issues flagged by LLM Judge
+    file_hash: Optional[str]               # SHA256 hash of the original PDF bytes
     extracted_at: Optional[str]
     reviewed_by: Optional[str]
     review_notes: Optional[str]
@@ -343,6 +345,16 @@ class ContractRecord(BaseModel):
   },
   "confidence_score": 0.95,
   "extraction_status": "Approved",
+  "field_scores": {
+    "company_information": 0.97,
+    "merchant_details": 0.95,
+    "credit_card_pricing": 0.94,
+    "processing_details": 0.96,
+    "processor_info": 0.98,
+    "owners_officers": 0.93,
+    "banking_information": 0.96
+  },
+  "judge_issues": [],
   "file_hash": "a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
   "extracted_at": "2024-04-26T11:35:00Z"
 }
@@ -487,6 +499,16 @@ class ContractRecord(BaseModel):
   },
   "confidence_score": 0.95,
   "extraction_status": "Approved",
+  "field_scores": {
+    "company_information": 0.96,
+    "merchant_details": 0.94,
+    "credit_card_pricing": 0.95,
+    "processing_details": 0.97,
+    "processor_info": 0.96,
+    "owners_officers": 0.93,
+    "banking_information": 0.95
+  },
+  "judge_issues": [],
   "file_hash": "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5",
   "extracted_at": "2024-10-31T10:32:00Z"
 }
