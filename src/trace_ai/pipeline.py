@@ -161,6 +161,8 @@ def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
         normalize_result = run_normalize(extract_result, contract_id)
         if file_hash:
             normalize_result["file_hash"] = file_hash
+        normalize_result["source_pdf_uri"] = gcs_uri
+        normalize_result["page_count"] = ocr_result["page_count"]
         judge_result     = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
         result           = run_deliver(normalize_result, judge_result, contract_id)
     except Exception as e:

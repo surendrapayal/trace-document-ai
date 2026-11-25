@@ -52,15 +52,17 @@ contracts_schema = [
     bigquery.SchemaField("extraction_status", "STRING"),
     bigquery.SchemaField("field_scores", "JSON"),
     bigquery.SchemaField("judge_issues", "JSON"),
+    bigquery.SchemaField("source_pdf_uri", "STRING"),
+    bigquery.SchemaField("page_count", "INT64"),
     bigquery.SchemaField("file_hash", "STRING"),
     bigquery.SchemaField("extracted_at", "STRING"),
     bigquery.SchemaField("reviewed_by", "STRING"),
     bigquery.SchemaField("review_notes", "STRING"),
+    bigquery.SchemaField("reviewed_at", "STRING"),
 
     # Set by bigquery_client.upsert_contract
     bigquery.SchemaField("curated_gcs_uri", "STRING"),
     bigquery.SchemaField("updated_at", "STRING"),
-    bigquery.SchemaField("reviewed_at", "STRING"),
 ]
 
 contracts_table = bigquery.Table(f"{dataset_ref}.{config.BIGQUERY_TABLE_CONTRACTS}", schema=contracts_schema)

@@ -167,7 +167,10 @@ class ContractRecord(BaseModel):
     extraction_status: ExtractionStatus = ExtractionStatus.PENDING
     field_scores: Optional[dict] = None
     judge_issues: list[str] = []
+    source_pdf_uri: Optional[str] = None
+    page_count: Optional[int] = None
     file_hash: Optional[str] = None
     extracted_at: Optional[str] = None
     reviewed_by: Optional[str] = None
     review_notes: Optional[str] = None
+    reviewed_at: Optional[str] = None
