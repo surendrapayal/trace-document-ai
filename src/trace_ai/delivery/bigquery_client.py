@@ -86,6 +86,18 @@ def get_pending_review() -> list[dict]:
     return [dict(row) for row in _client.query(query).result()]
 
 
+def list_contracts(status: str | None = None) -> list[dict]:
+    if status:
+        query = f"SELECT * FROM `{_table('contracts')}` WHERE extraction_status = @status"
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("status", "STRING", status)]
+        )
+        rows = _client.query(query, job_config=job_config).result()
+    else:
+        rows = _client.query(f"SELECT * FROM `{_table('contracts')}`").result()
+    return [dict(row) for row in rows]
+
+
 def update_review_decision(contract_id: str, reviewer: str, decision: str, notes: str) -> None:
     sql = f"""
         UPDATE `{_table("contracts")}`

@@ -57,6 +57,12 @@ def get_pending_review() -> list[dict]:
     return [d.to_dict() for d in docs]
 
 
+def list_contracts(status: str | None = None) -> list[dict]:
+    ref = _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS)
+    query = ref.where("extraction_status", "==", status) if status else ref
+    return [d.to_dict() for d in query.stream()]
+
+
 def update_review_decision(contract_id: str, reviewer: str, decision: str, notes: str) -> None:
     _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS).document(contract_id).update({
         "extraction_status": decision,
