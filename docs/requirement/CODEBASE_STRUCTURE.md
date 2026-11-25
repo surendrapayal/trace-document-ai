@@ -64,7 +64,8 @@ trace-document-ai/
 │       │   ├── gcs_writer.py
 │       │   ├── storage_backend.py
 │       │   ├── firestore_client.py
-│       │   └── bigquery_client.py
+│       │   ├── bigquery_client.py
+│       │   └── webhook_client.py
 │       │
 │       ├── review_app/
 │       │   ├── __init__.py
@@ -72,7 +73,8 @@ trace-document-ai/
 │       │   ├── routes/
 │       │   │   ├── __init__.py
 │       │   │   ├── queue.py
-│       │   │   └── review.py
+│       │   │   ├── review.py
+│       │   │   └── contracts.py
 │       │   └── templates/
 │       │       ├── queue.html
 │       │       └── review.html
@@ -229,9 +231,10 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 | File | Responsibility |
 |------|----------------|
 | `gcs_writer.py` | Serializes ContractRecord to JSON and writes to `gs://<GCS_BUCKET>/<GCS_CURATED_PREFIX>/contracts/`. |
-| `storage_backend.py` | Factory — re-exports the correct backend functions based on `STORAGE_BACKEND` env var. |
-| `firestore_client.py` | Firestore implementation — upsert_contract, write_audit_event, get_contract, get_contract_by_hash, get_pending_review, update_review_decision. |
-| `bigquery_client.py` | BigQuery implementation — same 6-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
+| `storage_backend.py` | Factory -- re-exports the correct backend functions based on `STORAGE_BACKEND` env var. |
+| `firestore_client.py` | Firestore implementation -- upsert_contract, write_audit_event, get_contract, get_contract_by_hash, get_pending_review, update_review_decision. |
+| `bigquery_client.py` | BigQuery implementation -- same 6-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
+| `webhook_client.py` | Pushes approved `ContractRecord` JSON to third party endpoint via HTTP POST. 3 retries with exponential backoff (2s, 4s, 8s). Disabled by default (`WEBHOOK_ENABLED=false`). |
 
 GCP Services used: `GCS Curated Zone`, `Firestore` or `BigQuery` (configured via `STORAGE_BACKEND`)
 
@@ -243,11 +246,12 @@ FastAPI + Jinja2 web application for human-in-the-loop (HITL) contract review. D
 
 | File | Responsibility |
 |------|----------------|
-| `main.py` | FastAPI app entry point. Mounts queue and review routers. Root `/` redirects to `/queue`. |
-| `routes/queue.py` | `GET /queue` — fetches Review Required contracts via storage_backend, renders queue.html. |
-| `routes/review.py` | `GET /review/{id}` — renders contract detail. `POST /review/{id}` — records approve/reject decision, writes to GCS if approved. |
-| `templates/queue.html` | Reviewer queue UI — lists pending contracts with confidence score badges. |
-| `templates/review.html` | Contract detail UI — all sections displayed, approve/reject form at bottom. |
+| `main.py` | FastAPI app entry point. Mounts queue, review, and contracts routers. Root `/` redirects to `/queue`. |
+| `routes/queue.py` | `GET /queue` -- fetches Review Required contracts via storage_backend, renders queue.html. |
+| `routes/review.py` | `GET /review/{id}` -- renders contract detail. `POST /review/{id}` -- records approve/reject decision, writes to GCS if approved, triggers webhook. |
+| `routes/contracts.py` | `GET /api/v1/contracts/{id}` -- fetch single contract as JSON. `GET /api/v1/contracts?status=...` -- list contracts by status. Auth via `X-API-Key` when `REST_API_KEY` is set. |
+| `templates/queue.html` | Reviewer queue UI -- lists pending contracts with confidence score badges. |
+| `templates/review.html` | Contract detail UI -- all sections displayed, approve/reject form at bottom. |
 
 GCP Services used: `Firestore` or `BigQuery` (via storage_backend), `GCS Curated Zone`
 
@@ -329,6 +333,8 @@ jinja2==3.1.4
 python-multipart==0.0.20
 pydantic==2.10.3
 python-dotenv==1.0.1
+pypdf==4.3.1                      # PDF page splitting for >15 page documents
+httpx==0.27.2                     # Webhook HTTP client
 ```
 
 ---
@@ -376,6 +382,18 @@ CONFIDENCE_THRESHOLD_REVIEW=0.60
 
 # Duplicate detection
 DUPLICATE_CHECK_ENABLED=true
+
+# Max upload file size in MB -- default is 50
+MAX_FILE_SIZE_BYTES=50
+
+# Webhook -- push approved contracts to third party (disabled by default)
+WEBHOOK_ENABLED=false
+WEBHOOK_URL=
+WEBHOOK_SECRET=
+WEBHOOK_TIMEOUT_SECONDS=10
+
+# REST API -- leave empty to disable auth
+REST_API_KEY=
 
 # Logging — LOG_TO_FILE=true writes to a rotating file locally
 LOG_LEVEL=INFO

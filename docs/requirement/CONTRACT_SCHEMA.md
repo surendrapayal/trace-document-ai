@@ -13,6 +13,13 @@ from typing import Optional, List
 from enum import Enum
 
 
+class ExtractionStatus(str, Enum):
+    PENDING = "Pending"
+    APPROVED = "Approved"
+    REVIEW_REQUIRED = "Review Required"
+    REJECTED = "Rejected"
+
+
 class BillingModel(str, Enum):
     INTERCHANGE_PLUS = "IC++"
     FLAT_RATE = "Flat Rate"
@@ -181,7 +188,7 @@ class ContractRecord(BaseModel):
 
     # ── Validation ────────────────────────────────────────────
     confidence_score: float = Field(ge=0.0, le=1.0)
-    extraction_status: str                  # Approved, Review Required, Rejected
+    extraction_status: ExtractionStatus = ExtractionStatus.PENDING  # Approved, Review Required, Rejected, Pending
     file_hash: Optional[str]                # SHA256 hash of the original PDF bytes
     extracted_at: Optional[str]
     reviewed_by: Optional[str]

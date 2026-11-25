@@ -198,18 +198,18 @@ Re-hydrates the `ContractRecord` from the plain dict (which now includes `file_h
 ```python
     curated_uri = None
 
-    if extraction_status == "Approved":
+    if extraction_status == ExtractionStatus.APPROVED:
         curated_uri = gcs_write(contract_record)
         write_audit_event(contract_id, "delivery", "written_to_curated", {"gcs_uri": curated_uri})
-    elif extraction_status == "Review Required":
+    elif extraction_status == ExtractionStatus.REVIEW_REQUIRED:
         log("Routed to human review queue", severity="WARNING")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")
-    elif extraction_status == "Rejected":
-        log("Contract rejected — manual intervention required", severity="ERROR")
+    elif extraction_status == ExtractionStatus.REJECTED:
+        log("Contract rejected -- manual intervention required", severity="ERROR")
         write_audit_event(contract_id, "delivery", "rejected")
 ```
-Note the severity levels: `"Review Required"` uses `WARNING` and `"Rejected"` uses `ERROR` — matching the actual code. The walkthrough previously had these wrong (`log()` with no severity for Review Required, and `severity="WARNING"` for Rejected).
-Three routing branches. Only `"Approved"` triggers a GCS write — `curated_uri` stays `None` for the other two. Each branch writes its own audit event.
+Note the severity levels: `REVIEW_REQUIRED` uses `WARNING` and `REJECTED` uses `ERROR`.
+Three routing branches. Only `APPROVED` triggers a GCS write -- `curated_uri` stays `None` for the other two. Each branch writes its own audit event.
 
 ```python
     upsert_contract(contract_record, curated_uri)
@@ -359,10 +359,8 @@ from pathlib import Path
 from trace_ai.common.gcs_client import upload
 from trace_ai.config import config
 from trace_ai.common.logger import log
-
-MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 ```
-`hashlib` computes the SHA256 file hash for duplicate detection. `uuid` generates the unique contract ID. `upload` is the shared GCS helper. `MAX_FILE_SIZE_BYTES` is a module-level constant — 50MB expressed as bytes via multiplication for readability.
+`hashlib` computes the SHA256 file hash for duplicate detection. `uuid` generates the unique contract ID. `upload` is the shared GCS helper. File size limit is read from `config.MAX_FILE_SIZE_BYTES` (default 50 MB, configurable via `MAX_FILE_SIZE_BYTES` env var in MB).
 
 ---
 
