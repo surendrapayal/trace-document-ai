@@ -6,8 +6,6 @@ from trace_ai.common.gcs_client import upload
 from trace_ai.config import config
 from trace_ai.common.logger import log
 
-MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
-
 
 def _compute_hash(local_path: str) -> str:
     h = hashlib.sha256()
@@ -25,8 +23,8 @@ def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
         raise ValueError(f"Only PDF files are supported. Got: {local_path}")
 
     file_size = os.path.getsize(local_path)
-    if file_size > MAX_FILE_SIZE_BYTES:
-        raise ValueError(f"File exceeds 50MB limit: {file_size} bytes")
+    if file_size > config.MAX_FILE_SIZE_BYTES:
+        raise ValueError(f"File exceeds {config.MAX_FILE_SIZE_BYTES // (1024 * 1024)}MB limit: {file_size} bytes")
 
     file_hash = _compute_hash(local_path)
 

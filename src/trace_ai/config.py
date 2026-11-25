@@ -100,6 +100,7 @@ class Config:
     CONFIDENCE_THRESHOLD_REVIEW: float = float(os.getenv("CONFIDENCE_THRESHOLD_REVIEW", "0.60"))
 
     DUPLICATE_CHECK_ENABLED: bool = os.getenv("DUPLICATE_CHECK_ENABLED", "true").lower() == "true"
+    MAX_FILE_SIZE_BYTES: int = int(os.getenv("MAX_FILE_SIZE_BYTES", "50")) * 1024 * 1024
 
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_TO_FILE: bool = os.getenv("LOG_TO_FILE", "false").lower() == "true"
