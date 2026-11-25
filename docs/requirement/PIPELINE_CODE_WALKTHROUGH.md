@@ -193,7 +193,7 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
     contract_record.confidence_score = judge_result["overall_confidence"]
     contract_record.extraction_status = extraction_status
 ```
-Re-hydrates the `ContractRecord` and stamps it with the judge's `confidence_score` and `extraction_status` — these two fields were set to defaults (`0.0`, `"Pending"`) by the normalizer and are now overwritten with the real values.
+Re-hydrates the `ContractRecord` from the plain dict (which now includes `file_hash` if it was injected by `run()`). Stamps it with the judge's `confidence_score` and `extraction_status` — these two fields were set to defaults (`0.0`, `"Pending"`) by the normalizer and are now overwritten with the real values.
 
 ```python
     curated_uri = None
@@ -202,12 +202,13 @@ Re-hydrates the `ContractRecord` and stamps it with the judge's `confidence_scor
         curated_uri = gcs_write(contract_record)
         write_audit_event(contract_id, "delivery", "written_to_curated", {"gcs_uri": curated_uri})
     elif extraction_status == "Review Required":
-        log("Routed to human review queue")
+        log("Routed to human review queue", severity="WARNING")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")
     elif extraction_status == "Rejected":
-        log("Contract rejected — manual intervention required", severity="WARNING")
+        log("Contract rejected — manual intervention required", severity="ERROR")
         write_audit_event(contract_id, "delivery", "rejected")
 ```
+Note the severity levels: `"Review Required"` uses `WARNING` and `"Rejected"` uses `ERROR` — matching the actual code. The walkthrough previously had these wrong (`log()` with no severity for Review Required, and `severity="WARNING"` for Rejected).
 Three routing branches. Only `"Approved"` triggers a GCS write — `curated_uri` stays `None` for the other two. Each branch writes its own audit event.
 
 ```python
@@ -231,21 +232,39 @@ Final pipeline output. `curated_gcs_uri` is `None` for non-approved contracts.
 ### Full Pipeline `run()`
 
 ```python
-def run(gcs_uri: str, contract_id: str) -> dict:
+def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
+    import uuid
+    set_context(contract_id=contract_id, request_id=uuid.uuid4().hex[:8].upper(), stage="pipeline")
     log("Pipeline started", gcs_uri=gcs_uri)
 
-    ocr_result     = run_ocr(gcs_uri, contract_id)
-    dlp_result     = run_dlp(ocr_result["full_text"], contract_id)
-    rag_result     = run_rag(dlp_result["masked_text"], contract_id)
-    extract_result = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
-    normalize_result = run_normalize(extract_result, contract_id)
-    judge_result   = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
-    result         = run_deliver(normalize_result, judge_result, contract_id)
+    try:
+        ocr_result       = run_ocr(gcs_uri, contract_id)
+        dlp_result       = run_dlp(ocr_result["full_text"], contract_id)
+        rag_result       = run_rag(dlp_result["masked_text"], contract_id)
+        extract_result   = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
+        normalize_result = run_normalize(extract_result, contract_id)
+        if file_hash:
+            normalize_result["file_hash"] = file_hash
+        judge_result     = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
+        result           = run_deliver(normalize_result, judge_result, contract_id)
+    except Exception as e:
+        log("Pipeline failed", severity="ERROR", error=str(e))
+        raise
+    finally:
+        clear_context()
 
+    set_context(stage="pipeline")
     log("Pipeline complete", **result)
     return result
 ```
-Calls each stage function in sequence, threading outputs into the next stage's inputs. Note that `dlp_result["masked_text"]` is passed to three separate stages — RAG (line 4), Gemini extraction (line 5), and LLM Judge (line 7). The judge needs the original masked text as the source of truth to compare against the extraction.
+Three changes vs the stage functions above:
+
+- `file_hash: str | None = None` — optional third parameter. When a local PDF was uploaded, `upload_contract()` returns the hash and `main()` passes it here. For `--gcs-uri` runs the hash is `None` (bytes not available locally).
+- `set_context(contract_id=..., request_id=...)` — stamps every log line in this pipeline run with the contract ID and a short random request ID for traceability across stages.
+- `if file_hash: normalize_result["file_hash"] = file_hash` — injects the hash into the normalize stage output dict before it is passed to `run_judge()` and `run_deliver()`. This is how `file_hash` ends up on the `ContractRecord` and gets persisted to Firestore/BigQuery.
+- `try/except/finally` — catches any stage failure, logs it with `severity="ERROR"`, re-raises so the caller sees the exception, and always calls `clear_context()` to reset the MDC logger state.
+
+Note that `dlp_result["masked_text"]` is passed to three separate stages — RAG, Gemini extraction, and LLM Judge. The judge needs the original masked text as the source of truth to compare against the extraction.
 
 ---
 
@@ -285,21 +304,41 @@ parser.add_argument("--stage", choices=["ingest","ocr","dlp","rag","extract","no
 `--stage` restricts input to the 8 valid stage names. If omitted, the full pipeline runs.
 
 ```python
+# GCS folder — run full pipeline for every PDF under the prefix
+if args.gcs_uri and args.gcs_uri.endswith("/") and not args.stage:
+    from trace_ai.common.gcs_client import list_blobs
+    uri = args.gcs_uri[len("gs://"):]
+    bucket_name, prefix = uri.split("/", 1)
+    blobs = [b for b in list_blobs(bucket_name, prefix) if b.endswith(".pdf")]
+    ...
+    for blob in sorted(blobs):
+        cid = f"CNT-{uuid.uuid4().hex[:12].upper()}"
+        result = run(f"gs://{bucket_name}/{blob}", cid, None)
+```
+GCS folder support — a trailing `/` on `--gcs-uri` signals a folder run. `list_blobs()` lists all blobs under the prefix, filtered to `.pdf` only. Each blob gets a fresh `uuid4` contract ID. `file_hash` is `None` for GCS folder runs — the PDF bytes are not downloaded locally so no hash is computed.
+
+```python
 if args.local_pdf and args.stage != "ingest":
+    if os.path.isdir(args.local_pdf):
+        # Folder — run full pipeline for every PDF sequentially
+        for pdf in sorted(Path(args.local_pdf).glob("*.pdf")):
+            upload_result = upload_contract(str(pdf))
+            result = run(upload_result["gcs_uri"], upload_result["contract_id"], upload_result.get("file_hash"))
+            ...
     upload_result = upload_contract(args.local_pdf, contract_id)
     gcs_uri = upload_result["gcs_uri"]
     contract_id = upload_result["contract_id"]
+    file_hash = upload_result.get("file_hash")
 ```
-When `--local-pdf` is given for any stage other than `ingest`, the file is uploaded first and the returned `gcs_uri` and `contract_id` are used for the rest of the run. The `args.stage != "ingest"` guard prevents double-uploading — the `ingest` stage handles its own upload logic below.
+Local folder support — `os.path.isdir()` detects a folder path. Each PDF is uploaded individually via `upload_contract()` (which includes hash computation and duplicate check), then the full pipeline runs for each. `upload_result.get("file_hash")` passes the hash into `run()` so it is stored on the `ContractRecord`. The `args.stage != "ingest"` guard prevents double-uploading — the `ingest` stage handles its own upload logic separately.
 
 ```python
 if not args.stage:
-    # Full pipeline
-    result = run(gcs_uri, contract_id)
+    result = run(gcs_uri, contract_id, file_hash)
     print(json.dumps(result, indent=2))
     return
 ```
-If no `--stage` flag, runs the full pipeline and prints the final result.
+If no `--stage` flag, runs the full pipeline passing `file_hash` through. Prints the final result as JSON.
 
 The remaining `elif args.stage == "..."` blocks each validate their required flags (`--contract-id`, `--input`, etc.), read input files via `_read()`, call the corresponding `run_*()` function, and write output via `_write()`.
 
@@ -313,6 +352,7 @@ The remaining `elif args.stage == "..."` blocks each validate their required fla
 ---
 
 ```python
+import hashlib
 import os
 import uuid
 from pathlib import Path
@@ -322,7 +362,21 @@ from trace_ai.common.logger import log
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 ```
-`uuid` generates the unique contract ID. `upload` is the shared GCS helper. `MAX_FILE_SIZE_BYTES` is a module-level constant — 50MB expressed as bytes via multiplication for readability.
+`hashlib` computes the SHA256 file hash for duplicate detection. `uuid` generates the unique contract ID. `upload` is the shared GCS helper. `MAX_FILE_SIZE_BYTES` is a module-level constant — 50MB expressed as bytes via multiplication for readability.
+
+---
+
+### `_compute_hash(local_path) -> str`
+
+```python
+def _compute_hash(local_path: str) -> str:
+    h = hashlib.sha256()
+    with open(local_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+```
+Computes a SHA256 hash of the PDF bytes in 64KB streaming chunks — memory usage stays flat regardless of file size. The two-argument `iter()` calls the lambda repeatedly until it returns `b""` (EOF). Returns a 64-character lowercase hex string e.g. `a3f9b2c1d4e5...`. Used for duplicate detection.
 
 ---
 
@@ -349,6 +403,21 @@ Second guard — enforces PDF-only. `.lower()` makes the check case-insensitive 
 Third guard — checks file size before uploading. Avoids wasting bandwidth on oversized files.
 
 ```python
+    file_hash = _compute_hash(local_path)
+
+    if config.DUPLICATE_CHECK_ENABLED:
+        from trace_ai.delivery.storage_backend import get_contract_by_hash
+        existing = get_contract_by_hash(file_hash)
+        if existing:
+            raise ValueError(
+                f"Duplicate contract detected — already processed as {existing['contract_id']} "
+                f"(status: {existing.get('extraction_status', 'unknown')}). "
+                f"Set DUPLICATE_CHECK_ENABLED=false to reprocess."
+            )
+```
+Computes the SHA256 hash then checks for duplicates when `DUPLICATE_CHECK_ENABLED=true` (default). The import of `get_contract_by_hash` is deferred inside the `if` block — avoids importing the storage backend when duplicate checking is disabled. If a match is found, raises `ValueError` with the existing `contract_id` and status so the caller knows exactly which contract already processed this file.
+
+```python
     if not contract_id:
         contract_id = f"CNT-{uuid.uuid4().hex[:12].upper()}"
 ```
@@ -361,10 +430,10 @@ Auto-generates a contract ID if one wasn't provided. `uuid4()` generates a rando
 Constructs the GCS blob path: `raw/contracts/CNT-XXX/contract.pdf`. `os.path.basename()` extracts just the filename from the full local path. `upload()` performs the actual GCS upload and returns the full `gs://` URI.
 
 ```python
-    log("Contract uploaded to GCS raw zone", gcs_uri=gcs_uri)
-    return {"contract_id": contract_id, "gcs_uri": gcs_uri, "file_size_bytes": file_size}
+    log("Contract uploaded to GCS raw zone", gcs_uri=gcs_uri, file_size_bytes=file_size, file_hash=file_hash)
+    return {"contract_id": contract_id, "gcs_uri": gcs_uri, "file_size_bytes": file_size, "file_hash": file_hash}
 ```
-Logs the upload with the GCS URI as structured metadata. Returns all three values the caller needs — `contract_id` to track the contract, `gcs_uri` to pass to Stage 1 OCR, `file_size_bytes` for audit purposes.
+Logs the upload with `file_hash` as structured metadata. Returns four values — `contract_id`, `gcs_uri`, `file_size_bytes`, and `file_hash`. The `file_hash` is passed through `pipeline.run()` and injected into `normalize_result` so it is stored on the `ContractRecord` and persisted to Firestore/BigQuery.
 
 ---
 
