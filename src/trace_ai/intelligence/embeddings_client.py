@@ -1,6 +1,7 @@
 import vertexai
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 from trace_ai.config import config
+from trace_ai.common.logger import log
 
 
 def _model() -> TextEmbeddingModel:
@@ -11,6 +12,7 @@ def _model() -> TextEmbeddingModel:
 def embed(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
     inputs = [TextEmbeddingInput(text=t, task_type=task_type) for t in texts]
     embeddings = _model().get_embeddings(inputs, output_dimensionality=config.VERTEX_EMBEDDING_DIMENSIONS)
+    log("Embeddings generated", severity="DEBUG", count=len(embeddings), task_type=task_type)
     return [e.values for e in embeddings]
 
 

@@ -1,7 +1,7 @@
 import uuid
 from google.cloud import aiplatform, storage
 from trace_ai.config import config
-from trace_ai.common.logging_client import log
+from trace_ai.common.logger import log
 from trace_ai.intelligence.embeddings_client import embed
 
 aiplatform.init(project=config.GCP_PROJECT_ID, location=config.VERTEX_VECTOR_SEARCH_LOCATION)
@@ -36,11 +36,11 @@ def _store_chunk(chunk_id: str, text: str) -> None:
 
 
 def index_all() -> int:
-    log("knowledge_base", "kb_indexer", "Starting KB indexing")
+    log("KB indexing started")
 
     blob_names = _list_kb_blobs()
     if not blob_names:
-        log("knowledge_base", "kb_indexer", "No documents found in KB bucket", severity="WARNING")
+        log("No documents found in KB bucket", severity="WARNING")
         return 0
 
     index = aiplatform.MatchingEngineIndex(index_name=config.VERTEX_VECTOR_SEARCH_INDEX_ID)
@@ -62,14 +62,14 @@ def index_all() -> int:
             })
             total_chunks += 1
 
-        log("knowledge_base", "kb_indexer", f"Chunked {blob_name}", chunks=len(chunks))
+        log("Document chunked and embedded", severity="DEBUG", blob=blob_name, chunks=len(chunks))
 
     for i in range(0, len(all_datapoints), 100):
         batch = all_datapoints[i: i + 100]
         index.upsert_datapoints(datapoints=batch)
-        log("knowledge_base", "kb_indexer", f"Upserted batch {i // 100 + 1}", count=len(batch))
+        log("Upserted vector batch", severity="DEBUG", batch=i // 100 + 1, count=len(batch))
 
-    log("knowledge_base", "kb_indexer", "KB indexing complete", total_chunks=total_chunks)
+    log("KB indexing complete", total_chunks=total_chunks)
     return total_chunks
 
 
