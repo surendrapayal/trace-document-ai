@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from trace_ai.delivery.storage_backend import get_contract, update_review_decision
 from trace_ai.delivery.gcs_writer import write
-from trace_ai.normalization.schema import ContractRecord
+from trace_ai.normalization.schema import ContractRecord, ExtractionStatus
 from trace_ai.common.logger import log
 from pathlib import Path
 
@@ -29,7 +29,7 @@ async def submit_review(
     decision: str = Form(...),
     notes: str = Form(default=""),
 ):
-    if decision not in ("Approved", "Rejected"):
+    if decision not in (ExtractionStatus.APPROVED.value, ExtractionStatus.REJECTED.value):
         log("Invalid review decision submitted", severity="ERROR", contract_id=contract_id, decision=decision)
         raise HTTPException(status_code=400, detail="Decision must be Approved or Rejected")
 
@@ -41,9 +41,9 @@ async def submit_review(
     update_review_decision(contract_id, reviewer, decision, notes)
     log("Review decision submitted", contract_id=contract_id, decision=decision, reviewer=reviewer)
 
-    if decision == "Approved":
+    if decision == ExtractionStatus.APPROVED.value:
         record = ContractRecord(**data)
-        record.extraction_status = "Approved"
+        record.extraction_status = ExtractionStatus.APPROVED
         record.reviewed_by = reviewer
         record.review_notes = notes
         write(record)

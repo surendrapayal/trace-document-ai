@@ -3,6 +3,13 @@ from typing import Optional
 from enum import Enum
 
 
+class ExtractionStatus(str, Enum):
+    PENDING = "Pending"
+    APPROVED = "Approved"
+    REVIEW_REQUIRED = "Review Required"
+    REJECTED = "Rejected"
+
+
 class BillingModel(str, Enum):
     INTERCHANGE_PLUS = "IC++"
     FLAT_RATE = "Flat Rate"
@@ -157,7 +164,7 @@ class ContractRecord(BaseModel):
     owners_officers: list[OwnerOfficer]
     banking_information: BankingInformation
     confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
-    extraction_status: str = "Pending"
+    extraction_status: ExtractionStatus = ExtractionStatus.PENDING
     file_hash: Optional[str] = None
     extracted_at: Optional[str] = None
     reviewed_by: Optional[str] = None

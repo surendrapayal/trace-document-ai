@@ -36,6 +36,7 @@ from trace_ai.validation.llm_judge_client import evaluate
 from trace_ai.validation.confidence_scorer import route
 from trace_ai.delivery.gcs_writer import write as gcs_write
 from trace_ai.delivery.storage_backend import upsert_contract, write_audit_event
+from trace_ai.normalization.schema import ExtractionStatus
 
 
 # ── Individual stage functions ────────────────────────────────────────────────
@@ -120,13 +121,13 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
 
     curated_uri = None
 
-    if extraction_status == "Approved":
+    if extraction_status == ExtractionStatus.APPROVED:
         curated_uri = gcs_write(contract_record)
         write_audit_event(contract_id, "delivery", "written_to_curated", {"gcs_uri": curated_uri})
-    elif extraction_status == "Review Required":
+    elif extraction_status == ExtractionStatus.REVIEW_REQUIRED:
         log("Routed to human review queue", severity="WARNING")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")
-    elif extraction_status == "Rejected":
+    elif extraction_status == ExtractionStatus.REJECTED:
         log("Contract rejected -- manual intervention required", severity="ERROR")
         write_audit_event(contract_id, "delivery", "rejected")
 

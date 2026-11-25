@@ -1,7 +1,7 @@
 from google.cloud import bigquery
 from trace_ai.config import config
 from trace_ai.common.logger import log
-from trace_ai.normalization.schema import ContractRecord
+from trace_ai.normalization.schema import ContractRecord, ExtractionStatus
 from datetime import datetime, timezone
 import json
 
@@ -82,7 +82,7 @@ def get_contract_by_hash(file_hash: str) -> dict | None:
 
 
 def get_pending_review() -> list[dict]:
-    query = f"SELECT * FROM `{_table('contracts')}` WHERE extraction_status = 'Review Required'"
+    query = f"SELECT * FROM `{_table('contracts')}` WHERE extraction_status = '{ExtractionStatus.REVIEW_REQUIRED.value}'"
     return [dict(row) for row in _client.query(query).result()]
 
 

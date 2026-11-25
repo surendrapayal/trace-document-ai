@@ -1,7 +1,7 @@
 from google.cloud import firestore
 from trace_ai.config import config
 from trace_ai.common.logger import log
-from trace_ai.normalization.schema import ContractRecord
+from trace_ai.normalization.schema import ContractRecord, ExtractionStatus
 from datetime import datetime, timezone
 
 _db = firestore.Client(project=config.GCP_PROJECT_ID)
@@ -51,7 +51,7 @@ def get_contract_by_hash(file_hash: str) -> dict | None:
 def get_pending_review() -> list[dict]:
     docs = (
         _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS)
-        .where("extraction_status", "==", "Review Required")
+        .where("extraction_status", "==", ExtractionStatus.REVIEW_REQUIRED.value)
         .stream()
     )
     return [d.to_dict() for d in docs]
