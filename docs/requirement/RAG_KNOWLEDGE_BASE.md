@@ -1,6 +1,74 @@
-# TRACE Platform — Heartland RAG Knowledge Base
+# TRACE Platform — RAG Knowledge Base
 # Derived from: CHETSHOESLLC.pdf, FITCHBURG HISTORICAL SOCIETY.pdf
 # Version: 1.0 (POC Seed)
+
+---
+
+## Why RAG Exists in TRACE
+
+Gemini is a general-purpose LLM. It has no built-in knowledge of Heartland-specific
+contract structure, fee names, pricing models, or field layouts. Without domain context,
+Gemini would guess or hallucinate — for example:
+
+- It would not know that "Interchange Plus" in the pricing bar means billing_model = "IC++"
+- It would not know that a 0.910% discount rate in an IC++ contract is the markup only, not the total cost
+- It would not know that "Monthly 5 bps" is the settlement type for IC++ contracts
+- It would not know the fixed order of the 9 recurring fees in the Heartland fee table
+- It would not know that "atlas Token" is an internal Heartland system identifier
+
+RAG solves this by injecting Heartland-specific reference documents directly into every
+Gemini prompt as grounding context. Gemini then extracts against known rules, not guesses.
+
+---
+
+## What RAG Is — Plain English
+
+RAG stands for Retrieval-Augmented Generation.
+
+Instead of asking Gemini to extract from the contract text alone, we first retrieve
+relevant reference material from a knowledge base and inject it alongside the contract
+text in the prompt. Gemini reads both together and uses the reference material to
+interpret the contract correctly.
+
+```
+Without RAG:
+  Gemini sees: "Discount Rate: 0.910%"
+  Gemini guesses: some kind of rate, unclear meaning
+
+With RAG:
+  Gemini sees: "Discount Rate: 0.910%"
+            + "IC++ contracts show a single Discount Rate column — this is the
+               Heartland markup only, not the total cost. Total = Interchange + markup + txn fee."
+  Gemini extracts: discount_rate_cp = "0.910%" correctly mapped to IC++ billing model
+```
+
+---
+
+## The 4 Knowledge Base Documents
+
+These are plain `.txt` files written manually by the developer / business analyst.
+They encode domain expertise about Heartland contracts into text form.
+They are uploaded once to GCS and indexed into Vertex AI Vector Search.
+
+### Who creates them?
+You (the developer or business analyst) write them based on your knowledge of
+Heartland contracts. They are not auto-generated. Think of them as structured
+reference notes that a human expert would use to train a new analyst.
+
+### Where are they stored?
+```
+gs://<GCS_BUCKET>/kb/documents/heartland_playbook.txt
+gs://<GCS_BUCKET>/kb/documents/heartland_fee_dictionary.txt
+gs://<GCS_BUCKET>/kb/documents/heartland_pricing_models.txt
+gs://<GCS_BUCKET>/kb/documents/heartland_merchant_types.txt
+```
+
+### When are they loaded?
+Once, before any contract is processed. After uploading to GCS, run:
+```bash
+python -m trace_ai.knowledge_base.kb_indexer
+```
+This chunks, embeds, and indexes all 4 documents into Vector Search.
 
 ---
 
@@ -267,7 +335,7 @@ Each owner or officer entry on page 3 contains:
   cell_phone            : Cell phone number
   dob                   : Date of birth — will be masked by DLP e.g. "7/31/1992"
   ssn_last4             : SSN — shown masked e.g. "***-**-6306"
-  drivers_license_last4 : Driver’s license — shown masked e.g. "****8113"
+  drivers_license_last4 : Driver's license — shown masked e.g. "****8113"
   length_at_address     : How long at current address e.g. "5 years"
   citizenship           : e.g. "US Citizen"
 
@@ -296,3 +364,121 @@ Free-text field — examples seen:
   "Healthcare"
   "Professional Services"
 ```
+
+---
+
+## How the KB Documents Are Processed — Full Lifecycle
+
+### Step 1 — Upload to GCS (manual, one-time)
+
+Upload all 4 `.txt` files to the GCS KB bucket under the `documents/` prefix:
+
+```
+gs://<GCS_BUCKET>/kb/documents/heartland_playbook.txt
+gs://<GCS_BUCKET>/kb/documents/heartland_fee_dictionary.txt
+gs://<GCS_BUCKET>/kb/documents/heartland_pricing_models.txt
+gs://<GCS_BUCKET>/kb/documents/heartland_merchant_types.txt
+```
+
+### Step 2 — Create the Vector Search Index (one-time, ~30–60 min)
+
+```bash
+python scripts/create_index.py
+```
+
+This creates an empty Vertex AI Vector Search index configured for:
+- 768 dimensions (matches `text-embedding-004` output size)
+- DOT_PRODUCT_DISTANCE with UNIT_L2_NORM (optimal for text embeddings)
+- STREAM_UPDATE method (allows incremental upserts from kb_indexer)
+
+Copy the 3 printed IDs into `.env`:
+```
+VERTEX_VECTOR_SEARCH_INDEX_ID=...
+VERTEX_VECTOR_SEARCH_ENDPOINT_ID=...
+VERTEX_VECTOR_SEARCH_DEPLOYED_INDEX_ID=trace-kb-deployed
+```
+
+### Step 3 — Index the Documents (`kb_indexer.py`)
+
+```bash
+python -m trace_ai.knowledge_base.kb_indexer
+```
+
+What happens inside `index_all()`:
+
+```
+For each .txt file in gs://<bucket>/kb/documents/:
+    │
+    ├── _read_blob()
+    │       └── downloads the full text of the document
+    │
+    ├── _chunk_text()
+    │       └── splits into 500-char chunks with 50-char overlap
+    │           e.g. heartland_playbook.txt (4000 chars) → ~16 chunks
+    │           overlap ensures context is not lost at chunk boundaries
+    │
+    ├── embed(chunks, task_type="RETRIEVAL_DOCUMENT")
+    │       └── calls Vertex AI Embeddings API (text-embedding-004)
+    │           each chunk → list[float] of 768 dimensions
+    │           task_type="RETRIEVAL_DOCUMENT" signals these are documents to be stored
+    │
+    └── for each chunk:
+            ├── chunk_id = uuid4()
+            ├── _store_chunk()
+            │       └── saves chunk text to gs://<bucket>/kb/chunks/<uuid>.txt
+            └── appends { datapoint_id: chunk_id, feature_vector: [768 floats] }
+
+After all documents:
+    index.upsert_datapoints(batches of 100)
+        └── writes all vectors into the Vector Search index
+```
+
+After this step, the index contains one vector per chunk. Each vector's ID is a UUID
+that maps back to a `.txt` file in `gs://<bucket>/kb/chunks/`.
+
+---
+
+## How RAG Is Used Per Contract — Stage 3
+
+During pipeline Stage 3, `rag_client.query()` runs for every contract:
+
+```
+1. Takes first 2000 chars of masked_text as the search query
+   (enough to capture merchant name, business type, pricing section header)
+
+2. embed_single(query_text, task_type="RETRIEVAL_QUERY")
+   → converts query to a 768-dim vector
+   note: task_type="RETRIEVAL_QUERY" is different from "RETRIEVAL_DOCUMENT" used at index time
+   — this asymmetry is intentional, text-embedding-004 is optimised for asymmetric retrieval
+
+3. index_endpoint.find_neighbors(queries=[query_vector], num_neighbors=5)
+   → Vector Search finds the 5 stored chunk vectors closest to the query vector
+   → returns 5 neighbor IDs (UUIDs)
+
+4. For each neighbor ID:
+   download_bytes(bucket, "kb/chunks/<neighbor_id>.txt")
+   → fetches the actual text of that chunk from GCS
+
+5. return "\n\n---\n\n".join(chunks)
+   → all 5 chunk texts joined into one string = rag_context
+```
+
+This `rag_context` string is then injected into all 7 Gemini extraction prompts
+alongside the contract text. Gemini reads both together.
+
+---
+
+## When to Re-index
+
+Re-run `kb_indexer.py` whenever you:
+- Add a new KB document to GCS
+- Update an existing KB document (edit the `.txt` file and re-upload)
+- Add support for a new processor (add a new playbook document)
+
+```bash
+python -m trace_ai.knowledge_base.kb_indexer
+```
+
+`upsert_datapoints()` is idempotent — re-indexing the same document generates new
+chunk UUIDs and adds them alongside the old ones. To avoid stale duplicates, delete
+the old chunks from GCS and clear the index before re-indexing updated documents.
