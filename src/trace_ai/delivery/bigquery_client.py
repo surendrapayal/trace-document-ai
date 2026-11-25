@@ -3,6 +3,7 @@ from trace_ai.config import config
 from trace_ai.common.logger import log
 from trace_ai.normalization.schema import ContractRecord, ExtractionStatus
 from datetime import datetime, timezone
+from enum import Enum
 import json
 
 _client = bigquery.Client(project=config.GCP_PROJECT_ID)
@@ -37,6 +38,8 @@ def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:
     def _param(k: str, v) -> bigquery.ScalarQueryParameter:
         if isinstance(v, float):
             return bigquery.ScalarQueryParameter(k, "FLOAT64", v)
+        if isinstance(v, Enum):
+            return bigquery.ScalarQueryParameter(k, "STRING", v.value)
         return bigquery.ScalarQueryParameter(k, "STRING", str(v) if v is not None else None)
 
     merge_sql = f"""
