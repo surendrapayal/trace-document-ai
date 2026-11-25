@@ -38,7 +38,7 @@ def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
         existing = get_contract_by_hash(file_hash)
         if existing:
             msg = (
-                f"Duplicate contract detected — already processed as {existing['contract_id']} "
+                f"Duplicate contract detected -- already processed as {existing['contract_id']} "
                 f"(status: {existing.get('extraction_status', 'unknown')}). "
                 f"Set DUPLICATE_CHECK_ENABLED=false to reprocess."
             )

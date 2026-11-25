@@ -47,7 +47,7 @@ def _deidentify_config() -> dlp_v2.DeidentifyConfig | None:
 
 def mask_pii(text: str, contract_id: str) -> tuple[str, list[str]]:
     if not config.DLP_ENABLED:
-        log("DLP masking disabled — skipping", severity="WARNING")
+        log("DLP masking disabled -- skipping", severity="WARNING")
         return text, []
 
     client = dlp_v2.DlpServiceClient()

@@ -127,7 +127,7 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
         log("Routed to human review queue", severity="WARNING")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")
     elif extraction_status == "Rejected":
-        log("Contract rejected — manual intervention required", severity="ERROR")
+        log("Contract rejected -- manual intervention required", severity="ERROR")
         write_audit_event(contract_id, "delivery", "rejected")
 
     upsert_contract(contract_record, curated_uri)
