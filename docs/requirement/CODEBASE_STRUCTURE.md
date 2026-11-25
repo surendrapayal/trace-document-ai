@@ -74,10 +74,12 @@ trace-document-ai/
 │       │   │   ├── __init__.py
 │       │   │   ├── queue.py
 │       │   │   ├── review.py
+│       │   │   ├── decisions.py
 │       │   │   └── contracts.py
 │       │   └── templates/
 │       │       ├── queue.html
-│       │       └── review.html
+│       │       ├── review.html
+│       │       └── decisions.html
 │       │
 │       └── knowledge_base/
 │           ├── __init__.py
@@ -246,12 +248,14 @@ FastAPI + Jinja2 web application for human-in-the-loop (HITL) contract review. D
 
 | File | Responsibility |
 |------|----------------|
-| `main.py` | FastAPI app entry point. Mounts queue, review, and contracts routers. Root `/` redirects to `/queue`. |
+| `main.py` | FastAPI app entry point. Mounts queue, review, decisions, and contracts routers. Root `/` redirects to `/queue`. |
 | `routes/queue.py` | `GET /queue` -- fetches Review Required contracts via storage_backend, renders queue.html. |
 | `routes/review.py` | `GET /review/{id}` -- renders contract detail. `POST /review/{id}` -- records approve/reject decision, writes to GCS if approved, triggers webhook. |
-| `routes/contracts.py` | `GET /api/v1/contracts/{id}` -- fetch single contract as JSON. `GET /api/v1/contracts?status=...` -- list contracts by status. Auth via `X-API-Key` when `REST_API_KEY` is set. |
+| `routes/decisions.py` | `GET /approved` -- lists all approved contracts. `GET /rejected` -- lists all rejected contracts. Both render decisions.html. |
+| `routes/contracts.py` | `GET /api/v1/contracts/{id}` -- fetch single contract as JSON. `GET /api/v1/contracts?status=...` -- list contracts by status. `GET /api/v1/contracts/status/stats` -- breakdown by status. Auth via `X-API-Key` when `REST_API_KEY` is set. |
 | `templates/queue.html` | Reviewer queue UI -- lists pending contracts with confidence score badges. |
 | `templates/review.html` | Contract detail UI -- all sections displayed, approve/reject form at bottom. |
+| `templates/decisions.html` | Shared template for approved and rejected contract lists -- shows reviewer, notes, reviewed_at. |
 
 GCP Services used: `Firestore` or `BigQuery` (via storage_backend), `GCS Curated Zone`
 

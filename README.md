@@ -225,10 +225,11 @@ uvicorn trace_ai.review_app.main:app --reload --port 8080
 Open [http://localhost:8080/queue](http://localhost:8080/queue) to see pending contracts.
 
 **How it works**:
-- `queue.html` and `review.html` are static Jinja2 templates in the repo -- never generated at runtime
+- `queue.html`, `review.html`, and `decisions.html` are static Jinja2 templates in the repo -- never generated at runtime
 - A contract appears in the queue only when Stage 7 writes it with `extraction_status = "Review Required"` (LLM Judge score 0.60--0.85)
 - Reviewer opens `/queue` → clicks a contract → reviews all extracted fields → submits Approve or Reject
 - Approved contracts are written to GCS curated zone and the decision is recorded in Firestore/BigQuery
+- `/approved` and `/rejected` show finalized contracts with reviewer name, notes, and timestamp
 
 ---
 
@@ -297,6 +298,8 @@ trace-document-ai/
 │   ├── validation/             # LLM judge + confidence scorer
 │   ├── delivery/               # GCS writer + storage backend (Firestore or BigQuery) + webhook
 │   ├── review_app/             # FastAPI + Jinja2 HITL review UI + REST API (/api/v1/contracts)
+│   │   ├── routes/             # queue.py, review.py, decisions.py, contracts.py
+│   │   └── templates/          # queue.html, review.html, decisions.html
 │   └── knowledge_base/         # Vector Search indexer
 ├── scripts/
 │   └── create_index.py         # One-time Vector Search provisioning

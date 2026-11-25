@@ -482,8 +482,8 @@ PDF bytes
 
 ## Review App — Human Review Flow
 
-**Modules**: `review_app/routes/queue.py`, `review_app/routes/review.py`
-**Templates**: `review_app/templates/queue.html`, `review_app/templates/review.html`
+**Modules**: `review_app/routes/queue.py`, `review_app/routes/review.py`, `review_app/routes/decisions.py`
+**Templates**: `review_app/templates/queue.html`, `review_app/templates/review.html`, `review_app/templates/decisions.html`
 **GCP services**: Firestore or BigQuery (via `storage_backend`), GCS Curated Zone
 
 **Start the review app**:
@@ -532,6 +532,22 @@ Reviewer submits → POST /review/CNT-XXX
         ├── if Approved → gcs_writer.write()  ← writes output.json to GCS curated zone
         ├── if Approved → webhook_client.send()  ← pushes to third party (if WEBHOOK_ENABLED=true)
         └── redirect → GET /queue
+
+Browser: GET /approved
+        │
+        ▼
+decisions.py → list_contracts("Approved")  ← Firestore/BigQuery: all extraction_status="Approved"
+        │
+        ▼
+Jinja2 renders decisions.html          ← injects contracts list with reviewer, notes, reviewed_at
+
+Browser: GET /rejected
+        │
+        ▼
+decisions.py → list_contracts("Rejected")  ← Firestore/BigQuery: all extraction_status="Rejected"
+        │
+        ▼
+Jinja2 renders decisions.html          ← injects contracts list with reviewer, notes, reviewed_at
 ```
 
 ---

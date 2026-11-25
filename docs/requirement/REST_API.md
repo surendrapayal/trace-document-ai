@@ -144,7 +144,40 @@ curl -X POST http://localhost:8080/review/CNT-A3F9B2C1D4E5 \
 
 ---
 
-### 5. GET /api/v1/contracts/{contract_id}
+### 5. GET /approved
+
+Returns the HTML page listing all contracts with `extraction_status = "Approved"`.
+
+**Response**: HTML page (Jinja2 rendered `decisions.html`)
+
+```bash
+curl http://localhost:8080/approved
+```
+
+- Contracts are sorted by `reviewed_at` descending (most recently reviewed first)
+- Shows reviewer name, review notes, reviewed_at timestamp for each contract
+- Includes both auto-approved (pipeline) and human-approved (review app) contracts
+- Intended for browser use -- not a JSON API
+
+---
+
+### 6. GET /rejected
+
+Returns the HTML page listing all contracts with `extraction_status = "Rejected"`.
+
+**Response**: HTML page (Jinja2 rendered `decisions.html`)
+
+```bash
+curl http://localhost:8080/rejected
+```
+
+- Contracts are sorted by `reviewed_at` descending
+- Shows reviewer name, review notes, reviewed_at timestamp for each contract
+- Intended for browser use -- not a JSON API
+
+---
+
+### 7. GET /api/v1/contracts/{contract_id}
 
 Fetches a single contract record by ID as JSON.
 
@@ -202,7 +235,7 @@ curl -H "X-API-Key: your-secret-key" \
 
 ---
 
-### 6. GET /api/v1/contracts?status=Review Required
+### 8. GET /api/v1/contracts?status=...
 
 Lists all contracts with a given `extraction_status`.
 
@@ -260,11 +293,14 @@ curl "http://localhost:8080/api/v1/contracts?status=Review%20Required"
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/` | No | Redirect to `/queue` |
-| `GET` | `/queue` | No | HTML review queue (browser) |
+| `GET` | `/queue` | No | HTML review queue -- pending contracts (browser) |
 | `GET` | `/review/{contract_id}` | No | HTML review detail page (browser) |
 | `POST` | `/review/{contract_id}` | No | Submit Approve/Reject decision |
+| `GET` | `/approved` | No | HTML list of all approved contracts (browser) |
+| `GET` | `/rejected` | No | HTML list of all rejected contracts (browser) |
 | `GET` | `/api/v1/contracts/{contract_id}` | Optional | Fetch single contract as JSON |
 | `GET` | `/api/v1/contracts?status=...` | Optional | List contracts by status as JSON |
+| `GET` | `/api/v1/contracts/status/stats` | Optional | Breakdown of contracts by status |
 
 "Auth: Optional" means auth is enforced only when `REST_API_KEY` is set in `.env`. Default is no auth.
 
