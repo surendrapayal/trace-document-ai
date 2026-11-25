@@ -6,7 +6,9 @@ For uploading a local PDF first, use ingestion/upload_handler.py separately.
 
 Full pipeline usage:
     python -m trace_ai.pipeline --gcs-uri gs://trace-raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
+    python -m trace_ai.pipeline --gcs-uri gs://trace-raw/contracts/
     python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
+    python -m trace_ai.pipeline --local-pdf /path/to/folder/
 
 Individual stage usage:
     python -m trace_ai.pipeline --stage ingest --local-pdf /path/to/contract.pdf
@@ -203,12 +205,47 @@ def main():
     contract_id = args.contract_id
     gcs_uri = args.gcs_uri
 
+    # GCS folder — run full pipeline for every PDF under the prefix
+    if args.gcs_uri and args.gcs_uri.endswith("/") and not args.stage:
+        from trace_ai.common.gcs_client import list_blobs
+        uri = args.gcs_uri[len("gs://"):]
+        bucket_name, prefix = uri.split("/", 1)
+        blobs = [b for b in list_blobs(bucket_name, prefix) if b.endswith(".pdf")]
+        if not blobs:
+            print(f"No PDF files found at: {args.gcs_uri}", file=sys.stderr)
+            sys.exit(1)
+        processed, failed = [], []
+        for blob in sorted(blobs):
+            cid = f"CNT-{blob.replace('/', '-').replace('.pdf', '').upper()[-12:]}"
+            uri = f"gs://{bucket_name}/{blob}"
+            try:
+                result = run(uri, cid)
+                processed.append(result)
+            except Exception as e:
+                failed.append({"gcs_uri": uri, "error": str(e)})
+        print(json.dumps({"processed": processed, "failed": failed, "total": len(blobs)}, indent=2))
+        return
+
     if args.local_pdf and args.stage != "ingest":
         import os
         from trace_ai.ingestion.upload_handler import upload_contract
         if os.path.isdir(args.local_pdf):
-            print("--local-pdf is a directory; use --stage ingest for folder uploads", file=sys.stderr)
-            sys.exit(1)
+            # Folder — run full pipeline for every PDF sequentially
+            from pathlib import Path
+            pdf_files = sorted(Path(args.local_pdf).glob("*.pdf"))
+            if not pdf_files:
+                print(f"No PDF files found in: {args.local_pdf}", file=sys.stderr)
+                sys.exit(1)
+            processed, failed = [], []
+            for pdf in pdf_files:
+                try:
+                    upload_result = upload_contract(str(pdf))
+                    result = run(upload_result["gcs_uri"], upload_result["contract_id"])
+                    processed.append(result)
+                except Exception as e:
+                    failed.append({"file": pdf.name, "error": str(e)})
+            print(json.dumps({"processed": processed, "failed": failed, "total": len(pdf_files)}, indent=2))
+            return
         upload_result = upload_contract(args.local_pdf, contract_id)
         gcs_uri = upload_result["gcs_uri"]
         contract_id = upload_result["contract_id"]
