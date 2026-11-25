@@ -32,7 +32,7 @@ Local PDF / GCS URI
         │
         ▼
 [Stage 7] Delivery           gcs_writer.py + storage_backend.py               CLI: --stage deliver
-              ├── Approved         → GCS curated zone + upsert_contract
+              ├── Approved         → GCS curated zone + upsert_contract + Webhook (if enabled)
               ├── Review Required  → upsert_contract (review queue)
               └── Rejected         → upsert_contract (logged)
 ```
@@ -419,13 +419,23 @@ for production once the KB is properly indexed.
 
 ## Stage 7 — Delivery
 
-**Modules**: `delivery/gcs_writer.py`, `delivery/storage_backend.py`
+**Modules**: `delivery/gcs_writer.py`, `delivery/storage_backend.py`, `delivery/webhook_client.py`
 
 ### GCS write (Approved only)
 
 - Serializes `ContractRecord` to JSON via `model_dump_json(indent=2)`
 - Writes to `gs://<GCS_BUCKET>/<GCS_CURATED_PREFIX>/contracts/<contract_id>/output.json`
 - Returns the `curated_gcs_uri`
+
+### Webhook push (Approved only, if enabled)
+
+After GCS write, `webhook_client.send(contract_record)` is called when `WEBHOOK_ENABLED=true`. This pushes the full `ContractRecord` JSON to the configured third party endpoint.
+
+- Disabled by default (`WEBHOOK_ENABLED=false`)
+- 3 retries with exponential backoff: 2s, 4s, 8s
+- Auth via `Authorization: Bearer <WEBHOOK_SECRET>` header (optional)
+- Failure is logged as ERROR but **never fails the pipeline** — the contract is already approved and stored
+- Also triggered after human review approval via the review app
 
 ### Operational store (all statuses)
 
@@ -520,8 +530,67 @@ Reviewer submits → POST /review/CNT-XXX
         │
         ├── update_review_decision()   ← writes decision + audit event to Firestore/BigQuery
         ├── if Approved → gcs_writer.write()  ← writes output.json to GCS curated zone
+        ├── if Approved → webhook_client.send()  ← pushes to third party (if WEBHOOK_ENABLED=true)
         └── redirect → GET /queue
 ```
+
+---
+
+## Third Party Integration
+
+Two mechanisms are available for third party systems to consume approved contract data.
+
+### Webhook (push)
+
+TRACE pushes the approved `ContractRecord` JSON to the third party endpoint immediately on approval — both from the pipeline (auto-approval) and from the review app (human approval).
+
+**Trigger**: `extraction_status = Approved` (auto or human review)  
+**Module**: `delivery/webhook_client.py`  
+**Method**: `POST` to `WEBHOOK_URL` with `Content-Type: application/json`
+
+```
+POST <WEBHOOK_URL>
+Authorization: Bearer <WEBHOOK_SECRET>
+Content-Type: application/json
+
+{ ...full ContractRecord JSON... }
+```
+
+**Retry behaviour**: 3 attempts, exponential backoff (2s → 4s → 8s). All attempts logged. Failure never affects the pipeline.
+
+**Environment variables**:
+
+| Variable | Default | Description |
+|---|---|---|
+| `WEBHOOK_ENABLED` | `false` | Set to `true` to activate |
+| `WEBHOOK_URL` | `""` | Full URL of the third party endpoint |
+| `WEBHOOK_SECRET` | `""` | Sent as `Authorization: Bearer <token>`. Leave empty to skip auth |
+| `WEBHOOK_TIMEOUT_SECONDS` | `10` | Per-request timeout in seconds |
+
+**Testing locally**: Set `WEBHOOK_URL=https://webhook.site/<your-unique-id>` — every POST will appear on webhook.site in real time with full headers and body. No third party needed.
+
+### REST API (pull)
+
+Third party systems can pull contract data on demand via the REST API endpoints on the review app.
+
+**Base URL**: `http://localhost:8080/api/v1` (local) or your deployed app URL  
+**Auth**: `X-API-Key: <REST_API_KEY>` header. Leave `REST_API_KEY` empty to disable auth (dev only).
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/v1/contracts/{contract_id}` | Fetch a single contract by ID |
+| `GET /api/v1/contracts?status=Review Required` | List all contracts pending human review |
+
+**Example**:
+```bash
+# Fetch a single contract
+curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A3F9B2C1D4E5
+
+# List contracts pending review
+curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Review Required"
+```
+
+**Interactive docs**: FastAPI auto-generates Swagger UI at `http://localhost:8080/docs`
 
 ---
 
@@ -536,3 +605,4 @@ Reviewer submits → POST /review/CNT-XXX
 | `normalization` | `normalization_started`, `normalization_complete` |
 | `validation` | `llm_judge_started`, `llm_judge_complete` |
 | `delivery` | `written_to_curated`, `routed_to_review_queue`, `rejected` |
+| `delivery` | `webhook_delivered`, `webhook_failed` (when `WEBHOOK_ENABLED=true`) |

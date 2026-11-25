@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from trace_ai.delivery.storage_backend import get_contract, update_review_decision
 from trace_ai.delivery.gcs_writer import write
+from trace_ai.delivery.webhook_client import send as webhook_send
 from trace_ai.normalization.schema import ContractRecord, ExtractionStatus
 from trace_ai.common.logger import log
 from pathlib import Path
@@ -48,5 +49,6 @@ async def submit_review(
         record.review_notes = notes
         write(record)
         log("Approved contract written to GCS curated zone", contract_id=contract_id)
+        webhook_send(record)
 
     return RedirectResponse(url="/queue", status_code=303)

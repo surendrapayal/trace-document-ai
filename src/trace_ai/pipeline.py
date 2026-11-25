@@ -37,6 +37,7 @@ from trace_ai.validation.confidence_scorer import route
 from trace_ai.delivery.gcs_writer import write as gcs_write
 from trace_ai.delivery.storage_backend import upsert_contract, write_audit_event
 from trace_ai.normalization.schema import ExtractionStatus
+from trace_ai.delivery.webhook_client import send as webhook_send
 
 
 # ── Individual stage functions ────────────────────────────────────────────────
@@ -124,6 +125,7 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
     if extraction_status == ExtractionStatus.APPROVED:
         curated_uri = gcs_write(contract_record)
         write_audit_event(contract_id, "delivery", "written_to_curated", {"gcs_uri": curated_uri})
+        webhook_send(contract_record)
     elif extraction_status == ExtractionStatus.REVIEW_REQUIRED:
         log("Routed to human review queue", severity="WARNING")
         write_audit_event(contract_id, "delivery", "routed_to_review_queue")

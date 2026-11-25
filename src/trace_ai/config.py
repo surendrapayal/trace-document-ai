@@ -102,6 +102,13 @@ class Config:
     DUPLICATE_CHECK_ENABLED: bool = os.getenv("DUPLICATE_CHECK_ENABLED", "true").lower() == "true"
     MAX_FILE_SIZE_BYTES: int = int(os.getenv("MAX_FILE_SIZE_BYTES", "50")) * 1024 * 1024
 
+    WEBHOOK_ENABLED: bool = os.getenv("WEBHOOK_ENABLED", "false").lower() == "true"
+    WEBHOOK_URL: str = os.getenv("WEBHOOK_URL", "")
+    WEBHOOK_SECRET: str = os.getenv("WEBHOOK_SECRET", "")
+    WEBHOOK_TIMEOUT_SECONDS: int = int(os.getenv("WEBHOOK_TIMEOUT_SECONDS", "10"))
+
+    REST_API_KEY: str = os.getenv("REST_API_KEY", "")
+
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_TO_FILE: bool = os.getenv("LOG_TO_FILE", "false").lower() == "true"
     LOG_FILE_PATH: str = os.getenv("LOG_FILE_PATH", "logs/trace_ai.log")

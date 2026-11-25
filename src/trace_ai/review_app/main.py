@@ -2,11 +2,13 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from trace_ai.review_app.routes.queue import router as queue_router
 from trace_ai.review_app.routes.review import router as review_router
+from trace_ai.review_app.routes.contracts import router as contracts_router
 
 app = FastAPI(title="TRACE Review App")
 
 app.include_router(queue_router)
 app.include_router(review_router)
+app.include_router(contracts_router)
 
 
 @app.get("/")

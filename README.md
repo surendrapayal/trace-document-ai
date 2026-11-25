@@ -12,8 +12,8 @@ TRACE ingests contract PDFs, extracts structured data using Document AI + Vertex
 ```
 Upload PDF → Document AI OCR → Cloud DLP (PII masking) → RAG context (Vector Search)
   → Gemini extraction (7 prompts) → Normalize (Pydantic) → LLM Judge → Route
-      ├── score ≥ 0.85  → Approved   → GCS Curated Zone
-      ├── score 0.60–0.85 → Review Required → FastAPI review app
+      ├── score ≥ 0.85  → Approved   → GCS Curated Zone → Webhook (if enabled)
+      ├── score 0.60–0.85 → Review Required → FastAPI review app → Webhook on approval
       └── score < 0.60  → Rejected   → logged, manual intervention
 ```
 
@@ -225,10 +225,50 @@ uvicorn trace_ai.review_app.main:app --reload --port 8080
 Open [http://localhost:8080/queue](http://localhost:8080/queue) to see pending contracts.
 
 **How it works**:
-- `queue.html` and `review.html` are static Jinja2 templates in the repo — never generated at runtime
-- A contract appears in the queue only when Stage 7 writes it with `extraction_status = "Review Required"` (LLM Judge score 0.60–0.85)
+- `queue.html` and `review.html` are static Jinja2 templates in the repo -- never generated at runtime
+- A contract appears in the queue only when Stage 7 writes it with `extraction_status = "Review Required"` (LLM Judge score 0.60--0.85)
 - Reviewer opens `/queue` → clicks a contract → reviews all extracted fields → submits Approve or Reject
 - Approved contracts are written to GCS curated zone and the decision is recorded in Firestore/BigQuery
+
+---
+
+## Third Party Integration
+
+### Webhook (push)
+
+TRACE pushes the approved `ContractRecord` JSON to a third party endpoint on every approval -- both auto-approval (pipeline) and human approval (review app).
+
+```bash
+# Enable in .env
+WEBHOOK_ENABLED=true
+WEBHOOK_URL=https://your-third-party.com/api/contracts
+WEBHOOK_SECRET=your-bearer-token
+```
+
+- Disabled by default (`WEBHOOK_ENABLED=false`) -- implementation is in place
+- 3 retries with exponential backoff (2s, 4s, 8s)
+- Failure is logged as ERROR but never fails the pipeline
+- **Testing locally**: set `WEBHOOK_URL=https://webhook.site/<your-id>` to inspect payloads in real time
+
+### REST API (pull)
+
+Third party systems can pull contract data on demand. Start the review app and use:
+
+```bash
+# Fetch a single contract
+curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A3F9B2C1D4E5
+
+# List contracts pending review
+curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Review Required"
+```
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/v1/contracts/{contract_id}` | Fetch a single contract by ID |
+| `GET /api/v1/contracts?status=Review Required` | List all contracts pending human review |
+
+- Auth via `X-API-Key` header. Set `REST_API_KEY` in `.env`. Leave empty to disable auth (dev only).
+- Interactive Swagger docs at [http://localhost:8080/docs](http://localhost:8080/docs)
 
 ---
 
@@ -255,8 +295,8 @@ trace-document-ai/
 │   │   └── prompts/            # 7 extraction prompts + llm_judge.txt
 │   ├── normalization/          # Pydantic ContractRecord schema + mapper
 │   ├── validation/             # LLM judge + confidence scorer
-│   ├── delivery/               # GCS writer + storage backend (Firestore or BigQuery)
-│   ├── review_app/             # FastAPI + Jinja2 HITL review UI
+│   ├── delivery/               # GCS writer + storage backend (Firestore or BigQuery) + webhook
+│   ├── review_app/             # FastAPI + Jinja2 HITL review UI + REST API (/api/v1/contracts)
 │   └── knowledge_base/         # Vector Search indexer
 ├── scripts/
 │   └── create_index.py         # One-time Vector Search provisioning
@@ -273,12 +313,14 @@ trace-document-ai/
 
 | Decision | Choice | Reason |
 |---|---|---|
-| Orchestration | Python `pipeline.py` | Direct, debuggable — no Cloud Workflows overhead for POC |
+| Orchestration | Python `pipeline.py` | Direct, debuggable -- no Cloud Workflows overhead for POC |
 | LLM | Vertex AI Gemini 1.5 Pro | Best-in-class extraction, native GCP, JSON mode |
 | RAG | Vertex AI Vector Search | Native GCP, no extra infra, integrates with Embeddings API |
-| Operational store | Firestore (default) or BigQuery | Configurable via `STORAGE_BACKEND` — Firestore for production, BigQuery for POC |
+| Operational store | Firestore (default) or BigQuery | Configurable via `STORAGE_BACKEND` -- Firestore for production, BigQuery for POC |
 | PII masking | Cloud DLP | Masks SSN, DOB, routing numbers before any LLM call |
 | Review UI | FastAPI + Jinja2 | Working UI with zero frontend build tooling |
+| Third party push | Webhook (`httpx`, disabled by default) | Fire-and-forget with retry -- failure never blocks pipeline |
+| Third party pull | REST API (`/api/v1/contracts`) | Standard pull pattern, secured with API key |
 
 See `docs/requirement/` for full architecture, schema, and requirement documents.
 
@@ -302,6 +344,11 @@ See `.env.example` for the full list. Key variables:
 | `BIGQUERY_DATASET` | BigQuery dataset name (when `STORAGE_BACKEND=bigquery`) |
 | `CONFIDENCE_THRESHOLD_APPROVE` | Default: `0.85` |
 | `CONFIDENCE_THRESHOLD_REVIEW` | Default: `0.60` |
-| `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` — default: `INFO` |
-| `LOG_TO_FILE` | `true` to write logs to a rotating file locally — default: `false` |
-| `LOG_FILE_PATH` | Log file path — default: `logs/trace_ai.log` |
+| `WEBHOOK_ENABLED` | `true` to push approved contracts to third party -- default: `false` |
+| `WEBHOOK_URL` | Third party endpoint URL |
+| `WEBHOOK_SECRET` | Bearer token sent in `Authorization` header |
+| `WEBHOOK_TIMEOUT_SECONDS` | Per-request timeout -- default: `10` |
+| `REST_API_KEY` | API key for `X-API-Key` header on `/api/v1/*` -- leave empty to disable auth |
+| `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` -- default: `INFO` |
+| `LOG_TO_FILE` | `true` to write logs to a rotating file locally -- default: `false` |
+| `LOG_FILE_PATH` | Log file path -- default: `logs/trace_ai.log` |
