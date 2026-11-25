@@ -249,7 +249,11 @@ def main():
                     failed.append({"file": pdf.name, "error": str(e)})
             print(json.dumps({"processed": processed, "failed": failed, "total": len(pdf_files)}, indent=2))
             return
-        upload_result = upload_contract(args.local_pdf, contract_id)
+        try:
+            upload_result = upload_contract(args.local_pdf, contract_id)
+        except Exception as e:
+            log(str(e), severity="ERROR")
+            sys.exit(1)
         gcs_uri = upload_result["gcs_uri"]
         contract_id = upload_result["contract_id"]
         file_hash = upload_result.get("file_hash")

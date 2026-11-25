@@ -1,4 +1,5 @@
 from trace_ai.config import config
+from trace_ai.common.logger import log
 
 if config.STORAGE_BACKEND == "bigquery":
     from trace_ai.delivery.bigquery_client import (
@@ -19,4 +20,6 @@ elif config.STORAGE_BACKEND == "firestore":
         update_review_decision,
     )
 else:
-    raise ValueError(f"Invalid STORAGE_BACKEND '{config.STORAGE_BACKEND}'. Must be 'bigquery' or 'firestore'.")
+    msg = f"Invalid STORAGE_BACKEND '{config.STORAGE_BACKEND}'. Must be 'bigquery' or 'firestore'."
+    log(msg, severity="ERROR")
+    raise ValueError(msg)

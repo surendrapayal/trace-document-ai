@@ -75,4 +75,4 @@ def index_all() -> int:
 
 if __name__ == "__main__":
     count = index_all()
-    print(f"Indexed {count} chunks into Vector Search.")
+    log(f"Indexed {count} chunks into Vector Search")

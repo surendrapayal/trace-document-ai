@@ -15,16 +15,21 @@ def _compute_hash(local_path: str) -> str:
     return h.hexdigest()
 
 
+def _raise(exc: Exception) -> None:
+    log(str(exc), severity="ERROR")
+    raise exc
+
+
 def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
     if not os.path.exists(local_path):
-        raise FileNotFoundError(f"File not found: {local_path}")
+        _raise(FileNotFoundError(f"File not found: {local_path}"))
 
     if not local_path.lower().endswith(".pdf"):
-        raise ValueError(f"Only PDF files are supported. Got: {local_path}")
+        _raise(ValueError(f"Only PDF files are supported. Got: {local_path}"))
 
     file_size = os.path.getsize(local_path)
     if file_size > config.MAX_FILE_SIZE_BYTES:
-        raise ValueError(f"File exceeds {config.MAX_FILE_SIZE_BYTES // (1024 * 1024)}MB limit: {file_size} bytes")
+        _raise(ValueError(f"File exceeds {config.MAX_FILE_SIZE_BYTES // (1024 * 1024)}MB limit: {file_size} bytes"))
 
     file_hash = _compute_hash(local_path)
 
@@ -32,11 +37,13 @@ def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
         from trace_ai.delivery.storage_backend import get_contract_by_hash
         existing = get_contract_by_hash(file_hash)
         if existing:
-            raise ValueError(
+            msg = (
                 f"Duplicate contract detected — already processed as {existing['contract_id']} "
                 f"(status: {existing.get('extraction_status', 'unknown')}). "
                 f"Set DUPLICATE_CHECK_ENABLED=false to reprocess."
             )
+            log(msg, severity="ERROR", file_hash=file_hash, existing_contract_id=existing["contract_id"])
+            raise ValueError(msg)
 
     if not contract_id:
         contract_id = f"CNT-{uuid.uuid4().hex[:12].upper()}"
@@ -52,11 +59,11 @@ def upload_contract(local_path: str, contract_id: str | None = None) -> dict:
 def upload_contracts_from_folder(folder_path: str) -> list[dict]:
     path = Path(folder_path)
     if not path.is_dir():
-        raise NotADirectoryError(f"Not a directory: {folder_path}")
+        _raise(NotADirectoryError(f"Not a directory: {folder_path}"))
 
     pdf_files = sorted(path.glob("*.pdf"))
     if not pdf_files:
-        raise FileNotFoundError(f"No PDF files found in: {folder_path}")
+        _raise(FileNotFoundError(f"No PDF files found in: {folder_path}"))
 
     results = []
     for pdf in pdf_files:
