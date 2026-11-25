@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TRACE — {{ status }} Contracts</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #f5f5f5; }
+    h1 { color: #1a1a2e; }
+    .nav { margin-bottom: 1.5rem; }
+    .nav a { margin-right: 1rem; color: #1a1a2e; text-decoration: none; font-weight: 600; }
+    .nav a:hover { text-decoration: underline; }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    th { background: #1a1a2e; color: white; padding: 0.75rem 1rem; text-align: left; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; }
+    tr:hover td { background: #f0f4ff; }
+    .badge { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+    .approved { background: #d4edda; color: #155724; }
+    .rejected { background: #f8d7da; color: #721c24; }
+    .score-high { color: #28a745; font-weight: bold; }
+    .score-mid { color: #fd7e14; font-weight: bold; }
+    .score-low { color: #dc3545; font-weight: bold; }
+    a.btn { padding: 0.3rem 0.8rem; background: #1a1a2e; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85rem; }
+    .empty { text-align: center; padding: 3rem; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/queue">Queue</a>
+    <a href="/approved">Approved</a>
+    <a href="/rejected">Rejected</a>
+  </div>
+
+  <h1>TRACE — {{ status }} Contracts</h1>
+  <p>{{ contracts | length }} contract(s)</p>
+
+  {% if contracts %}
+  <table>
+    <thead>
+      <tr>
+        <th>Contract ID</th>
+        <th>Merchant</th>
+        <th>Processor</th>
+        <th>Billing Model</th>
+        <th>Confidence</th>
+        <th>Status</th>
+        <th>Reviewed By</th>
+        <th>Review Notes</th>
+        <th>Reviewed At</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in contracts %}
+      <tr>
+        <td><code>{{ c.contract_id }}</code></td>
+        <td>{{ c.company_information.merchant_legal_name if c.company_information else c.get('company_information', {}).get('merchant_legal_name', '--') }}</td>
+        <td>{{ c.processor_info.processor_name if c.processor_info else c.get('processor_info', {}).get('processor_name', '--') }}</td>
+        <td>{{ c.credit_card_pricing.billing_model if c.credit_card_pricing else c.get('credit_card_pricing', {}).get('billing_model', '--') }}</td>
+        <td>
+          {% set score = c.confidence_score | float %}
+          <span class="{% if score >= 0.85 %}score-high{% elif score >= 0.60 %}score-mid{% else %}score-low{% endif %}">
+            {{ "%.0f" | format(score * 100) }}%
+          </span>
+        </td>
+        <td>
+          <span class="badge {% if c.extraction_status == 'Approved' %}approved{% else %}rejected{% endif %}">
+            {{ c.extraction_status }}
+          </span>
+        </td>
+        <td>{{ c.reviewed_by or '--' }}</td>
+        <td>{{ c.review_notes or '--' }}</td>
+        <td>{{ c.reviewed_at[:19].replace('T', ' ') if c.reviewed_at else '--' }}</td>
+        <td><a class="btn" href="/review/{{ c.contract_id }}">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No {{ status | lower }} contracts.</div>
+  {% endif %}
+</body>
+</html>
