@@ -209,7 +209,7 @@ All contract documents are normalized into a common Pydantic schema — `Contrac
 | Section | Model | Key Fields |
 |---------|-------|------------|
 | Identity | `ProcessorInfo` | processor_name, MID, atlas_token, sales_rep, generated_on |
-| Company | `CompanyInformation` | merchant_legal_name, address, primary_contact, HIC admin |
+| Company | `CompanyInformation` | legal_name, legal_address, dba_name, primary_contact, HIC admin |
 | Merchant | `MerchantDetails` | business_type, ownership_type, tax_id, PCI compliance |
 | Pricing | `CreditCardPricing` | billing_model, card_rates, recurring_fees, Amex details |
 | Processing | `ProcessingDetails` | card_swiped_pct, face_to_face_pct, website flag |

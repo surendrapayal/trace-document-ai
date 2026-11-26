@@ -440,7 +440,7 @@ independently via `field_scores` and derives `overall_confidence` from those.
 
 | Issue | Impact |
 |---|---|
-| Missing required field (`bank_name`, `merchant_legal_name`) | Large drop |
+| Missing required field (`bank_name`, `legal_name`) | Large drop |
 | Wrong billing model (`Flat Rate` extracted as `IC++`) | Large drop |
 | Wrong fee amounts or missing fees from the recurring fees table | Moderate drop |
 | Owner/officer section incomplete or missing an owner | Moderate drop |

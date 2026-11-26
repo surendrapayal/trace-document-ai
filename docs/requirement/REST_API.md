@@ -209,10 +209,10 @@ curl -H "X-API-Key: your-secret-key" \
     "mid": "123456789"
   },
   "company_information": {
-    "merchant_legal_name": "Chet Shoes LLC",
+    "legal_name": "Chet Shoes LLC",
+    "legal_address": "123 Main St, Springfield, IL 62701",
     "dba_name": "Chet's Shoe Store",
-    "address": "123 Main St",
-    "city_state_zip": "Springfield, IL 62701"
+    "legal_phone": "555-111-2222"
   },
   "merchant_details": { "..." },
   "credit_card_pricing": { "..." },
@@ -265,7 +265,7 @@ curl "http://localhost:8080/api/v1/contracts?status=Review%20Required"
       "extraction_status": "Review Required",
       "confidence_score": 0.72,
       "extracted_at": "2024-01-15T10:30:00+00:00",
-      "company_information": { "merchant_legal_name": "Chet Shoes LLC" },
+      "company_information": { "legal_name": "Chet Shoes LLC" },
       "..."
     }
   ],

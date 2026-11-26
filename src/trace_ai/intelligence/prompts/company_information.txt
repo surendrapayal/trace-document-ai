@@ -4,31 +4,39 @@ Extract the COMPANY INFORMATION section from the following Heartland contract te
 
 Return a JSON object with exactly these fields:
 {
-  "merchant_legal_name": "",
+  "legal_name": "",
+  "legal_address": "",
+  "legal_phone": "",
   "dba_name": "",
-  "address": "",
-  "city_state_zip": "",
-  "mailing_address": "",
-  "mailing_city_state_zip": "",
-  "phone": "",
-  "fax": "",
+  "dba_address": "",
+  "dba_phone": "",
+  "contact_email": "",
   "website": "",
-  "email": "",
   "primary_contact_name": "",
-  "primary_contact_title": "",
   "primary_contact_phone": "",
+  "secondary_contact_phone": "",
+  "after_hours_emergency_phone": "",
+  "authorized_to_purchase": "",
   "hic_admin_name": "",
-  "hic_admin_phone": "",
   "hic_admin_email": ""
 }
 
 Rules:
-- Use the LEGAL address block for merchant_legal_name, address, and city_state_zip
-- Use the MAILING address block for mailing_address and mailing_city_state_zip — if mailing address is the same as legal, still extract it; if absent set both to null
-- If no DBA name is present, set dba_name to null
-- fax is the fax number from the company information section — set to null if not present
-- primary_contact_title is the role/title next to the primary contact name — set to null if not present
-- hic_admin_phone is the phone number in the HIC Admin row — set to null if not present
+- legal_name: legal name of the business entity
+- legal_address: full legal address of the business entity
+- legal_phone: phone number listed in the legal block (e.g. P: (760) 376-1688) — extract digits and formatting only
+- dba_name: Doing Business As name — set to null if not present
+- dba_address: physical DBA address (e.g. 690 State Street, Hemet, CA 92543) — set to null if not present
+- dba_phone: phone listed next to DBA (e.g. P: (951) 487-2022) — set to null if not present
+- contact_email: main business email (e.g. E: aparicioben22@gmail.com) — strip the "E:" prefix
+- website: business website (e.g. W: http://chetsshoes.com) — strip the "W:" prefix
+- primary_contact_name: primary contact name
+- primary_contact_phone: primary contact phone (e.g. P: (978) 345-1157) — extract digits and formatting only
+- secondary_contact_phone: secondary phone listed under primary contact (e.g. P: (612) 619-0187) — set to null if not present
+- after_hours_emergency_phone: number following "After Hours/Emergency:" — set to null if not present
+- authorized_to_purchase: value following "Authorized to purchase:" — Yes or No — set to null if not present
+- hic_admin_name: Heartland InfoCentral portal admin name
+- hic_admin_email: email listed under HIC Admin — set to null if not present
 - Return null for any field not found in the document
 - Do not infer or guess values — only extract what is explicitly stated
 

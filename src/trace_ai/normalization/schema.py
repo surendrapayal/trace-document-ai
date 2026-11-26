@@ -59,21 +59,20 @@ class AmexDetails(BaseModel):
 
 
 class CompanyInformation(BaseModel):
-    merchant_legal_name: str
+    legal_name: str
+    legal_address: Optional[str] = None
+    legal_phone: Optional[str] = None
     dba_name: Optional[str] = None
-    address: Optional[str] = None
-    city_state_zip: Optional[str] = None
-    mailing_address: Optional[str] = None
-    mailing_city_state_zip: Optional[str] = None
-    phone: Optional[str] = None
-    fax: Optional[str] = None
+    dba_address: Optional[str] = None
+    dba_phone: Optional[str] = None
+    contact_email: Optional[str] = None
     website: Optional[str] = None
-    email: Optional[str] = None
     primary_contact_name: Optional[str] = None
-    primary_contact_title: Optional[str] = None
     primary_contact_phone: Optional[str] = None
+    secondary_contact_phone: Optional[str] = None
+    after_hours_emergency_phone: Optional[str] = None
+    authorized_to_purchase: Optional[str] = None
     hic_admin_name: Optional[str] = None
-    hic_admin_phone: Optional[str] = None
     hic_admin_email: Optional[str] = None
 
 

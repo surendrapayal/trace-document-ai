@@ -15,31 +15,36 @@ Extract the COMPANY INFORMATION section from the following Heartland contract te
 
 Return a JSON object with exactly these fields:
 {
-  "merchant_legal_name": "",       // Legal business name from the Legal section
-  "dba_name": "",                  // DBA name if different from legal name
-  "address": "",                   // Street address (Legal block)
-  "city_state_zip": "",            // City, State ZIP (Legal block)
-  "mailing_address": "",           // Street address (Mailing block)
-  "mailing_city_state_zip": "",    // City, State ZIP (Mailing block)
-  "phone": "",                     // Primary phone number
-  "fax": "",                       // Fax number
-  "website": "",                   // Website URL if present
-  "email": "",                     // Primary email
-  "primary_contact_name": "",      // Name next to "Primary:" label
-  "primary_contact_title": "",     // Title/role next to primary contact name
-  "primary_contact_phone": "",     // Phone next to primary contact
-  "hic_admin_name": "",            // HIC Admin name
-  "hic_admin_phone": "",           // HIC Admin phone
-  "hic_admin_email": ""            // HIC Admin email
+  "legal_name": "",                        // Legal business name
+  "legal_address": "",                     // Full legal address
+  "legal_phone": "",                       // Phone in legal block (e.g. P: (760) 376-1688)
+  "dba_name": "",                          // DBA name if different from legal name
+  "dba_address": "",                       // Physical DBA address
+  "dba_phone": "",                         // Phone listed next to DBA
+  "contact_email": "",                     // Main business email (e.g. E: aparicioben22@gmail.com)
+  "website": "",                           // Business website (e.g. W: http://chetsshoes.com)
+  "primary_contact_name": "",              // Name next to "Primary:" label
+  "primary_contact_phone": "",             // Phone next to primary contact
+  "secondary_contact_phone": "",           // Secondary phone listed under primary
+  "after_hours_emergency_phone": "",       // Number following "After Hours/Emergency:"
+  "authorized_to_purchase": "",            // Value following "Authorized to purchase:" — Yes or No
+  "hic_admin_name": "",                    // Heartland InfoCentral portal admin name
+  "hic_admin_email": ""                    // Email listed under HIC Admin
 }
 
 Rules:
-- Use the LEGAL address block for merchant_legal_name, address, and city_state_zip
-- Use the MAILING address block for mailing_address and mailing_city_state_zip — if mailing address is the same as legal, still extract it; if absent set both to null
-- If no DBA name is present, set dba_name to null
-- fax is the fax number from the company information section — set to null if not present
-- primary_contact_title is the role/title next to the primary contact name — set to null if not present
-- hic_admin_phone is the phone number in the HIC Admin row — set to null if not present
+- legal_name: legal name of the business entity
+- legal_address: full legal address of the business entity
+- legal_phone: phone number listed in the legal block — extract digits and formatting only
+- dba_name: Doing Business As name — set to null if not present
+- dba_address: physical DBA address — set to null if not present
+- dba_phone: phone listed next to DBA — set to null if not present
+- contact_email: strip the "E:" prefix
+- website: strip the "W:" prefix
+- secondary_contact_phone: set to null if not present
+- after_hours_emergency_phone: set to null if not present
+- authorized_to_purchase: Yes or No — set to null if not present
+- hic_admin_email: set to null if not present
 - Return null for any field not found in the document
 - Do not infer or guess values — only extract what is explicitly stated
 
@@ -269,7 +274,8 @@ Verdict rules:
 - overall_confidence < 0.60  → "Rejected"
 
 Critical fields (any error here = Review Required minimum):
-- merchant_legal_name
+- legal_name
+- legal_address
 - billing_model
 - card_rates (all rows)
 - recurring_fees (all rows)

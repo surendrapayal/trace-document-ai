@@ -92,15 +92,19 @@ Use `JSON_VALUE()` or `JSON_QUERY()` in SQL to extract fields.
 
 ```json
 {
-  "merchant_legal_name": "Chet Shoes LLC",
+  "legal_name": "Chet Shoes LLC",
+  "legal_address": "8870 Rendova St NE, Circle Pines, MN 55014",
+  "legal_phone": "(763) 253-1079",
   "dba_name": "Chet's Shoes",
-  "address": "123 Main St",
-  "city_state_zip": "Springfield, IL 62701",
-  "phone": "555-111-2222",
+  "dba_address": null,
+  "dba_phone": null,
+  "contact_email": "info@chetshoes.com",
   "website": "www.chetshoes.com",
-  "email": "info@chetshoes.com",
   "primary_contact_name": "Chester Brown",
   "primary_contact_phone": "555-111-3333",
+  "secondary_contact_phone": null,
+  "after_hours_emergency_phone": null,
+  "authorized_to_purchase": null,
   "hic_admin_name": "Admin User",
   "hic_admin_email": "admin@heartland.us"
 }
@@ -108,15 +112,19 @@ Use `JSON_VALUE()` or `JSON_QUERY()` in SQL to extract fields.
 
 | Field | Type | Description |
 |---|---|---|
-| `merchant_legal_name` | string | Required — legal business name |
+| `legal_name` | string | Required — legal business name |
+| `legal_address` | string\|null | Full legal address |
+| `legal_phone` | string\|null | Phone in legal block |
 | `dba_name` | string\|null | Doing business as name |
-| `address` | string\|null | Street address |
-| `city_state_zip` | string\|null | City, state, ZIP |
-| `phone` | string\|null | Business phone |
+| `dba_address` | string\|null | Physical DBA address |
+| `dba_phone` | string\|null | Phone listed next to DBA |
+| `contact_email` | string\|null | Main business email |
 | `website` | string\|null | Business website |
-| `email` | string\|null | Business email |
 | `primary_contact_name` | string\|null | Primary contact |
 | `primary_contact_phone` | string\|null | Primary contact phone |
+| `secondary_contact_phone` | string\|null | Secondary phone under primary |
+| `after_hours_emergency_phone` | string\|null | After hours/emergency phone |
+| `authorized_to_purchase` | string\|null | Yes or No |
 | `hic_admin_name` | string\|null | HIC admin name |
 | `hic_admin_email` | string\|null | HIC admin email |
 
@@ -408,7 +416,7 @@ Append-only event log. One row written per pipeline stage via `delivery/bigquery
 ```sql
 SELECT
   contract_id,
-  JSON_VALUE(company_information, '$.merchant_legal_name') AS merchant_name,
+  JSON_VALUE(company_information, '$.legal_name') AS merchant_name,
   confidence_score,
   extraction_status,
   extracted_at
@@ -429,7 +437,7 @@ ORDER BY timestamp ASC;
 ```sql
 SELECT
   contract_id,
-  JSON_VALUE(company_information, '$.merchant_legal_name') AS merchant_name,
+  JSON_VALUE(company_information, '$.legal_name') AS merchant_name,
   JSON_VALUE(credit_card_pricing, '$.billing_model')       AS billing_model,
   JSON_VALUE(credit_card_pricing, '$.annual_volume')       AS annual_volume,
   confidence_score,
@@ -443,7 +451,7 @@ ORDER BY extracted_at DESC;
 ```sql
 SELECT
   contract_id,
-  JSON_VALUE(company_information, '$.merchant_legal_name') AS merchant_name,
+  JSON_VALUE(company_information, '$.legal_name') AS merchant_name,
   reviewed_by,
   extraction_status,
   review_notes,
