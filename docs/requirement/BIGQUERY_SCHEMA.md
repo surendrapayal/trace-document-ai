@@ -1,4 +1,4 @@
-# TRACE — BigQuery Schema Reference
+﻿# TRACE — BigQuery Schema Reference
 
 This document describes the two BigQuery tables used when `STORAGE_BACKEND=bigquery`.
 
@@ -294,36 +294,47 @@ Use `JSON_VALUE()` or `JSON_QUERY()` in SQL to extract fields.
 
 ---
 
-#### `processing_details` — ProcessingDetails
+#### `processing_details` â€” ProcessingDetails
 
 ```json
 {
   "card_swiped_pct": "80%",
-  "keyed_with_imprint_pct": "10%",
-  "b2b_consumer_pct": "100%",
+  "keyed_pct": "10%",
   "face_to_face_pct": "90%",
+  "recurring_billing_pct": "0%",
   "inbound_telephone_pct": "5%",
+  "consumer_pct": "100%",
+  "b2b_pct": "0%",
   "future_delivery_volume_pct": "0%",
-  "signature_obtained": "Yes",
-  "consumer_charged": "No",
-  "credit_card_via_website": false
+  "future_delivery_2_to_5_days": "0%",
+  "future_delivery_6_to_10_days": "0%",
+  "future_delivery_11_to_30_days": "0%",
+  "signature_obtained": "All Face to Face Sales",
+  "consumer_charged": "At Time of Purchase",
+  "credit_card_via_website": "No",
+  "catering_pct": "0%"
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
 | `card_swiped_pct` | string\|null | % of card-swiped transactions |
-| `keyed_with_imprint_pct` | string\|null | % of keyed with imprint |
-| `b2b_consumer_pct` | string\|null | % B2B vs consumer |
+| `keyed_pct` | string\|null | % of keyed transactions |
 | `face_to_face_pct` | string\|null | % face-to-face transactions |
+| `recurring_billing_pct` | string\|null | % recurring billing transactions |
 | `inbound_telephone_pct` | string\|null | % inbound telephone orders |
+| `consumer_pct` | string\|null | % consumer transactions |
+| `b2b_pct` | string\|null | % B2B transactions |
 | `future_delivery_volume_pct` | string\|null | % future delivery volume |
-| `signature_obtained` | string\|null | Signature obtained flag |
-| `consumer_charged` | string\|null | Consumer charged flag |
-| `credit_card_via_website` | boolean\|null | Accepts cards via website |
+| `future_delivery_2_to_5_days` | string\|null | % future delivery 2â€“5 days |
+| `future_delivery_6_to_10_days` | string\|null | % future delivery 6â€“10 days |
+| `future_delivery_11_to_30_days` | string\|null | % future delivery 11â€“30 days |
+| `signature_obtained` | string\|null | When signature is obtained |
+| `consumer_charged` | string\|null | When consumer is charged |
+| `credit_card_via_website` | string\|null | Accepts cards via website (Yes/No) |
+| `catering_pct` | string\|null | % catering transactions |
 
 ---
-
 #### `owners_officers` — List[OwnerOfficer]
 
 JSON array — one object per owner or officer.

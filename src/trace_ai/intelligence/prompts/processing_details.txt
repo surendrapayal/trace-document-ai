@@ -5,19 +5,25 @@ Extract the PROCESSING DETAILS section from the following Heartland contract tex
 Return a JSON object with exactly these fields:
 {
   "card_swiped_pct": "",
-  "keyed_with_imprint_pct": "",
-  "b2b_consumer_pct": "",
+  "keyed_pct": "",
   "face_to_face_pct": "",
+  "recurring_billing_pct": "",
   "inbound_telephone_pct": "",
+  "consumer_pct": "",
+  "b2b_pct": "",
   "future_delivery_volume_pct": "",
+  "future_delivery_2_to_5_days": "",
+  "future_delivery_6_to_10_days": "",
+  "future_delivery_11_to_30_days": "",
   "signature_obtained": "",
   "consumer_charged": "",
-  "credit_card_via_website": null
+  "credit_card_via_website": "",
+  "catering_pct": ""
 }
 
 Rules:
-- credit_card_via_website: "Yes" -> true, "No" -> false
 - Percentages should include the % symbol e.g. "100%"
+- credit_card_via_website: return "Yes" or "No"
 - Return null for any field not found
 
 CONTRACT TEXT:

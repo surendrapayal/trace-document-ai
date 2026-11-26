@@ -1,4 +1,4 @@
-# TRACE Platform — Canonical Contract Schema
+﻿# TRACE Platform — Canonical Contract Schema
 # Derived from: Heartland Merchant Processing Contracts
 # Contracts Analyzed: CHETSHOESLLC.pdf, FITCHBURG HISTORICAL SOCIETY.pdf
 # Version: 1.0 (POC)
@@ -127,14 +127,20 @@ class MerchantDetails(BaseModel):
 
 class ProcessingDetails(BaseModel):
     card_swiped_pct: Optional[str]          # e.g. 100%
-    keyed_with_imprint_pct: Optional[str]
-    b2b_consumer_pct: Optional[str]
+    keyed_pct: Optional[str]
     face_to_face_pct: Optional[str]
+    recurring_billing_pct: Optional[str]
     inbound_telephone_pct: Optional[str]
+    consumer_pct: Optional[str]
+    b2b_pct: Optional[str]
     future_delivery_volume_pct: Optional[str]
+    future_delivery_2_to_5_days: Optional[str]
+    future_delivery_6_to_10_days: Optional[str]
+    future_delivery_11_to_30_days: Optional[str]
     signature_obtained: Optional[str]
     consumer_charged: Optional[str]
-    credit_card_via_website: Optional[bool]
+    credit_card_via_website: Optional[str]
+    catering_pct: Optional[str]
 
 
 class CreditCardPricing(BaseModel):
@@ -360,12 +366,20 @@ class ContractRecord(BaseModel):
   },
   "processing_details": {
     "card_swiped_pct": "100%",
-    "b2b_consumer_pct": "100%",
+    "keyed_pct": "0%",
     "face_to_face_pct": "100%",
+    "recurring_billing_pct": "0%",
+    "inbound_telephone_pct": "0%",
+    "consumer_pct": "100%",
+    "b2b_pct": "0%",
     "future_delivery_volume_pct": "0%",
+    "future_delivery_2_to_5_days": "0%",
+    "future_delivery_6_to_10_days": "0%",
+    "future_delivery_11_to_30_days": "0%",
     "signature_obtained": "All Face to Face Sales",
     "consumer_charged": "At Time of Purchase",
-    "credit_card_via_website": false
+    "credit_card_via_website": "No",
+    "catering_pct": "0%"
   },
   "owners_officers": [
     {
@@ -567,14 +581,20 @@ class ContractRecord(BaseModel):
   },
   "processing_details": {
     "card_swiped_pct": "50%",
-    "keyed_with_imprint_pct": "50%",
-    "b2b_consumer_pct": "100%",
+    "keyed_pct": "50%",
     "face_to_face_pct": "50%",
+    "recurring_billing_pct": "0%",
     "inbound_telephone_pct": "50%",
+    "consumer_pct": "100%",
+    "b2b_pct": "0%",
     "future_delivery_volume_pct": "0%",
+    "future_delivery_2_to_5_days": "0%",
+    "future_delivery_6_to_10_days": "0%",
+    "future_delivery_11_to_30_days": "0%",
     "signature_obtained": "All Face to Face Sales",
     "consumer_charged": "At Time of Purchase",
-    "credit_card_via_website": false
+    "credit_card_via_website": "No",
+    "catering_pct": "0%"
   },
   "owners_officers": [
     {

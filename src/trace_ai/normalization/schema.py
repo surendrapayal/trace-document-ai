@@ -117,14 +117,20 @@ class MerchantDetails(BaseModel):
 
 class ProcessingDetails(BaseModel):
     card_swiped_pct: Optional[str] = None
-    keyed_with_imprint_pct: Optional[str] = None
-    b2b_consumer_pct: Optional[str] = None
+    keyed_pct: Optional[str] = None
     face_to_face_pct: Optional[str] = None
+    recurring_billing_pct: Optional[str] = None
     inbound_telephone_pct: Optional[str] = None
+    consumer_pct: Optional[str] = None
+    b2b_pct: Optional[str] = None
     future_delivery_volume_pct: Optional[str] = None
+    future_delivery_2_to_5_days: Optional[str] = None
+    future_delivery_6_to_10_days: Optional[str] = None
+    future_delivery_11_to_30_days: Optional[str] = None
     signature_obtained: Optional[str] = None
     consumer_charged: Optional[str] = None
-    credit_card_via_website: Optional[bool] = None
+    credit_card_via_website: Optional[str] = None
+    catering_pct: Optional[str] = None
 
 
 class CreditCardPricing(BaseModel):

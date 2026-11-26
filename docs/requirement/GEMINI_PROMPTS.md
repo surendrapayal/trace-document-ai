@@ -1,4 +1,4 @@
-# TRACE Platform — Gemini Extraction Prompts
+﻿# TRACE Platform — Gemini Extraction Prompts
 # Derived from: Heartland contract structure (CHETSHOESLLC, FITCHBURG HISTORICAL SOCIETY)
 # Version: 1.0 (POC)
 
@@ -185,7 +185,7 @@ RAG CONTEXT:
 `
 
 ---
-## Prompt 4 — Processing Details Extraction
+## Prompt 4 â€” Processing Details Extraction
 
 **File:** `intelligence/prompts/processing_details.txt`
 
@@ -196,20 +196,26 @@ Extract the PROCESSING DETAILS section from the following Heartland contract tex
 
 Return a JSON object with exactly these fields:
 {
-  "card_swiped_pct": "",           // e.g. "100%" or "50%"
-  "keyed_with_imprint_pct": "",    // e.g. "50%"
-  "b2b_consumer_pct": "",          // Consumer percentage
-  "face_to_face_pct": "",          // e.g. "100%"
-  "inbound_telephone_pct": "",     // e.g. "50%"
-  "future_delivery_volume_pct": "",// e.g. "0%"
-  "signature_obtained": "",        // e.g. "All Face to Face Sales"
-  "consumer_charged": "",          // e.g. "At Time of Purchase"
-  "credit_card_via_website": null  // boolean
+  "card_swiped_pct": "",
+  "keyed_pct": "",
+  "face_to_face_pct": "",
+  "recurring_billing_pct": "",
+  "inbound_telephone_pct": "",
+  "consumer_pct": "",
+  "b2b_pct": "",
+  "future_delivery_volume_pct": "",
+  "future_delivery_2_to_5_days": "",
+  "future_delivery_6_to_10_days": "",
+  "future_delivery_11_to_30_days": "",
+  "signature_obtained": "",
+  "consumer_charged": "",
+  "credit_card_via_website": "",
+  "catering_pct": ""
 }
 
 Rules:
-- credit_card_via_website: "Yes" → true, "No" → false
 - Percentages should include the % symbol e.g. "100%"
+- credit_card_via_website: return "Yes" or "No"
 - Return null for any field not found
 
 CONTRACT TEXT:
@@ -220,6 +226,7 @@ RAG CONTEXT:
 ```
 
 ---
+
 
 ## Prompt 5 — Processor Info Extraction
 
