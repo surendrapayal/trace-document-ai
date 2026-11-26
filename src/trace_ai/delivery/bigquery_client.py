@@ -128,3 +128,36 @@ def update_review_decision(contract_id: str, reviewer: str, decision: str, notes
         "reviewer": reviewer, "decision": decision, "notes": notes,
     })
     log("Review decision recorded", decision=decision, reviewer=reviewer)
+
+
+def set_pipeline_status(contract_id: str, status: str, error: str | None = None) -> None:
+    sql = f"""
+        MERGE `{_table("contracts")}` T
+        USING (SELECT @contract_id AS contract_id) S
+        ON T.contract_id = S.contract_id
+        WHEN MATCHED THEN UPDATE SET
+            T.pipeline_status = @status,
+            T.pipeline_error = @error,
+            T.updated_at = @updated_at
+        WHEN NOT MATCHED THEN INSERT (contract_id, pipeline_status, pipeline_error, updated_at)
+            VALUES (@contract_id, @status, @error, @updated_at)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("contract_id", "STRING", contract_id),
+            bigquery.ScalarQueryParameter("status", "STRING", status),
+            bigquery.ScalarQueryParameter("error", "STRING", error),
+            bigquery.ScalarQueryParameter("updated_at", "STRING", _now()),
+        ]
+    )
+    _client.query(sql, job_config=job_config).result()
+    log("Pipeline status updated", severity="DEBUG", pipeline_status=status)
+
+
+def get_pipeline_status(contract_id: str) -> str | None:
+    query = f"SELECT pipeline_status FROM `{_table('contracts')}` WHERE contract_id = @contract_id LIMIT 1"
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ScalarQueryParameter("contract_id", "STRING", contract_id)]
+    )
+    rows = list(_client.query(query, job_config=job_config).result())
+    return rows[0]["pipeline_status"] if rows else None

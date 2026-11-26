@@ -253,37 +253,99 @@ def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
     import uuid
     set_context(contract_id=contract_id, request_id=uuid.uuid4().hex[:8].upper(), stage="pipeline")
     log("Pipeline started", gcs_uri=gcs_uri)
+```
+Stamps every log line in this pipeline run with `contract_id` and a short random `request_id` for traceability across stages.
 
-    try:
-        ocr_result       = run_ocr(gcs_uri, contract_id)
-        dlp_result       = run_dlp(ocr_result["full_text"], contract_id)
-        rag_result       = run_rag(dlp_result["masked_text"], contract_id)
-        extract_result   = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
-        normalize_result = run_normalize(extract_result, contract_id)
-        if file_hash:
-            normalize_result["file_hash"] = file_hash
-        normalize_result["source_pdf_uri"] = gcs_uri
-        normalize_result["page_count"] = ocr_result["page_count"]
-        judge_result     = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
-        result           = run_deliver(normalize_result, judge_result, contract_id)
+```python
+    current_status = get_pipeline_status(contract_id)
+    if current_status == "completed":
+        log("Pipeline already completed — skipping", contract_id=contract_id)
+        clear_context()
+        return {"contract_id": contract_id, "pipeline_status": "completed", "skipped": True}
+    if current_status == "dead_letter":
+        log("Contract is in dead letter — manual intervention required", severity="ERROR", ...)
+        clear_context()
+        return {"contract_id": contract_id, "pipeline_status": "dead_letter", "skipped": True}
+
+    set_pipeline_status(contract_id, "running")
+```
+Idempotency guard at entry. Checks `pipeline_status` in Firestore/BigQuery before doing any work:
+- `completed` — returns immediately, no stages re-run
+- `dead_letter` — returns immediately with ERROR log, manual intervention required
+- anything else — sets status to `running` and proceeds
+
+This means calling `run()` multiple times on the same `contract_id` is always safe.
+
+```python
+    # Stage 1 — OCR
+    ocr_result = _load_checkpoint(contract_id, "s1_ocr")
+    if ocr_result is None:
+        ocr_result = _with_retry(lambda: run_ocr(gcs_uri, contract_id), "ocr", contract_id)
+        _save_checkpoint(contract_id, "s1_ocr", ocr_result)
+    # ... same pattern for stages 2–6 ...
+    result = run_deliver(normalize_result, judge_result, contract_id)
+```
+Each stage follows the same three-step pattern:
+1. `_load_checkpoint()` — checks if `processing/contracts/<id>/s1_ocr.json` exists in GCS. If yes, loads and returns it (stage skipped). If no, returns `None`.
+2. `_with_retry()` — runs the stage function with exponential backoff (2s → 4s → 8s, up to `PIPELINE_MAX_RETRIES` attempts).
+3. `_save_checkpoint()` — writes the stage output JSON to GCS so future retries can skip it.
+
+Stage 7 (Delivery) is intentionally not checkpointed — it always re-runs to ensure the final contract state is written correctly to GCS curated zone and Firestore/BigQuery.
+
+```python
     except Exception as e:
-        log("Pipeline failed", severity="ERROR", error=str(e))
+        log("Pipeline failed — moving to dead letter", severity="ERROR", ...)
+        set_pipeline_status(contract_id, "dead_letter", error=str(e))
+        write_audit_event(contract_id, "pipeline", "dead_lettered", {"error": str(e)})
         raise
     finally:
         clear_context()
 
-    set_context(stage="pipeline")
-    log("Pipeline complete", **result)
-    return result
+    set_pipeline_status(contract_id, "completed")
 ```
-Three changes vs the stage functions above:
+On unrecoverable failure (all retries exhausted): sets `pipeline_status` to `dead_letter`, writes a `pipeline.dead_lettered` audit event with the error message, and re-raises so the caller sees the exception. On success: sets `pipeline_status` to `completed`. `clear_context()` always runs in `finally` to reset the MDC logger state.
 
-- `file_hash: str | None = None` — optional third parameter. When a local PDF was uploaded, `upload_contract()` returns the hash and `main()` passes it here. For `--gcs-uri` runs the hash is `None` (bytes not available locally).
-- `set_context(contract_id=..., request_id=...)` — stamps every log line in this pipeline run with the contract ID and a short random request ID for traceability across stages.
-- `if file_hash: normalize_result["file_hash"] = file_hash` — injects the hash into the normalize stage output dict before it is passed to `run_judge()` and `run_deliver()`. This is how `file_hash` ends up on the `ContractRecord` and gets persisted to Firestore/BigQuery.
-- `try/except/finally` — catches any stage failure, logs it with `severity="ERROR"`, re-raises so the caller sees the exception, and always calls `clear_context()` to reset the MDC logger state.
+---
 
-Note that `dlp_result["masked_text"]` is passed to three separate stages — RAG, Gemini extraction, and LLM Judge. The judge needs the original masked text as the source of truth to compare against the extraction.
+### Checkpoint Helpers
+
+```python
+def _checkpoint_blob(contract_id: str, stage: str) -> str:
+    return f"{config.GCS_PROCESSING_PREFIX}/contracts/{contract_id}/{stage}.json"
+```
+Builds the GCS blob path for a stage checkpoint. Example: `processing/contracts/CNT-XXX/s1_ocr.json`.
+
+```python
+def _load_checkpoint(contract_id: str, stage: str) -> dict | None:
+    if blob_exists(config.GCS_BUCKET, blob):
+        return download_json(config.GCS_BUCKET, blob)
+    return None
+```
+Checks GCS for an existing checkpoint. Returns the parsed JSON dict if found, `None` if not. A `None` return means the stage needs to run.
+
+```python
+def _save_checkpoint(contract_id: str, stage: str, data: dict) -> None:
+    upload_json(json.dumps(data), config.GCS_BUCKET, blob)
+```
+Serializes the stage output dict to JSON and uploads to GCS. Called immediately after a stage succeeds.
+
+---
+
+### Retry Helper
+
+```python
+def _with_retry(fn, stage: str, contract_id: str):
+    for attempt in range(1, max_retries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == max_retries:
+                raise
+            wait = 2 ** attempt
+            log(f"{stage} attempt {attempt} failed — retrying in {wait}s", severity="WARNING", ...)
+            time.sleep(wait)
+```
+Wraps any stage call with retry logic. `max_retries` comes from `config.PIPELINE_MAX_RETRIES` (default: 3). Backoff: attempt 1 waits 2s, attempt 2 waits 4s, attempt 3 waits 8s. On the final attempt, the exception is re-raised to the caller (`run()`) which then dead-letters the contract.
 
 ---
 

@@ -35,7 +35,7 @@ from trace_ai.normalization.schema import ContractRecord
 from trace_ai.validation.llm_judge_client import evaluate
 from trace_ai.validation.confidence_scorer import route
 from trace_ai.delivery.gcs_writer import write as gcs_write
-from trace_ai.delivery.storage_backend import upsert_contract, write_audit_event
+from trace_ai.delivery.storage_backend import upsert_contract, write_audit_event, set_pipeline_status, get_pipeline_status
 from trace_ai.normalization.schema import ExtractionStatus
 from trace_ai.delivery.webhook_client import send as webhook_send
 
@@ -167,6 +167,47 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
     return result
 
 
+# ── Checkpoint helpers ───────────────────────────────────────────────────────
+
+def _checkpoint_blob(contract_id: str, stage: str) -> str:
+    return f"{config.GCS_PROCESSING_PREFIX}/contracts/{contract_id}/{stage}.json"
+
+
+def _load_checkpoint(contract_id: str, stage: str) -> dict | None:
+    from trace_ai.common.gcs_client import blob_exists, download_json
+    blob = _checkpoint_blob(contract_id, stage)
+    if blob_exists(config.GCS_BUCKET, blob):
+        log(f"Checkpoint found — skipping {stage}", severity="DEBUG", contract_id=contract_id)
+        return download_json(config.GCS_BUCKET, blob)
+    return None
+
+
+def _save_checkpoint(contract_id: str, stage: str, data: dict) -> None:
+    from trace_ai.common.gcs_client import upload_json
+    import json
+    blob = _checkpoint_blob(contract_id, stage)
+    upload_json(json.dumps(data), config.GCS_BUCKET, blob)
+    log(f"Checkpoint saved — {stage}", severity="DEBUG", contract_id=contract_id)
+
+
+def _with_retry(fn, stage: str, contract_id: str):
+    """Run fn() with exponential backoff. Raises on final failure."""
+    import time
+    max_retries = config.PIPELINE_MAX_RETRIES
+    for attempt in range(1, max_retries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == max_retries:
+                log(f"{stage} failed after {max_retries} attempts", severity="ERROR",
+                    contract_id=contract_id, error=str(e))
+                raise
+            wait = 2 ** attempt
+            log(f"{stage} attempt {attempt} failed — retrying in {wait}s",
+                severity="WARNING", contract_id=contract_id, error=str(e))
+            time.sleep(wait)
+
+
 # ── Full pipeline ─────────────────────────────────────────────────────────────
 
 def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
@@ -174,24 +215,80 @@ def run(gcs_uri: str, contract_id: str, file_hash: str | None = None) -> dict:
     set_context(contract_id=contract_id, request_id=uuid.uuid4().hex[:8].upper(), stage="pipeline")
     log("Pipeline started", gcs_uri=gcs_uri)
 
+    # Guard: skip if already completed or dead-lettered
+    current_status = get_pipeline_status(contract_id)
+    if current_status == "completed":
+        log("Pipeline already completed — skipping", contract_id=contract_id)
+        clear_context()
+        return {"contract_id": contract_id, "pipeline_status": "completed", "skipped": True}
+    if current_status == "dead_letter":
+        log("Contract is in dead letter — manual intervention required", severity="ERROR",
+            contract_id=contract_id)
+        clear_context()
+        return {"contract_id": contract_id, "pipeline_status": "dead_letter", "skipped": True}
+
+    set_pipeline_status(contract_id, "running")
+
     try:
-        ocr_result       = run_ocr(gcs_uri, contract_id)
-        dlp_result       = run_dlp(ocr_result["full_text"], contract_id)
-        rag_result       = run_rag(dlp_result["masked_text"], contract_id)
-        extract_result   = run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id)
-        normalize_result = run_normalize(extract_result, contract_id)
-        if file_hash:
-            normalize_result["file_hash"] = file_hash
-        normalize_result["source_pdf_uri"] = gcs_uri
-        normalize_result["page_count"] = ocr_result["page_count"]
-        judge_result     = run_judge(dlp_result["masked_text"], normalize_result, contract_id)
-        result           = run_deliver(normalize_result, judge_result, contract_id)
+        # Stage 1 — OCR
+        ocr_result = _load_checkpoint(contract_id, "s1_ocr")
+        if ocr_result is None:
+            ocr_result = _with_retry(lambda: run_ocr(gcs_uri, contract_id), "ocr", contract_id)
+            _save_checkpoint(contract_id, "s1_ocr", ocr_result)
+
+        # Stage 2 — DLP
+        dlp_result = _load_checkpoint(contract_id, "s2_dlp")
+        if dlp_result is None:
+            dlp_result = _with_retry(lambda: run_dlp(ocr_result["full_text"], contract_id), "dlp", contract_id)
+            _save_checkpoint(contract_id, "s2_dlp", dlp_result)
+
+        # Stage 3 — RAG
+        rag_result = _load_checkpoint(contract_id, "s3_rag")
+        if rag_result is None:
+            rag_result = _with_retry(lambda: run_rag(dlp_result["masked_text"], contract_id), "rag", contract_id)
+            _save_checkpoint(contract_id, "s3_rag", rag_result)
+
+        # Stage 4 — Gemini extraction
+        extract_result = _load_checkpoint(contract_id, "s4_extract")
+        if extract_result is None:
+            extract_result = _with_retry(
+                lambda: run_extract(dlp_result["masked_text"], rag_result["rag_context"], contract_id),
+                "extract", contract_id,
+            )
+            _save_checkpoint(contract_id, "s4_extract", extract_result)
+
+        # Stage 5 — Normalization
+        normalize_result = _load_checkpoint(contract_id, "s5_normalize")
+        if normalize_result is None:
+            normalize_result = _with_retry(lambda: run_normalize(extract_result, contract_id), "normalize", contract_id)
+            if file_hash:
+                normalize_result["file_hash"] = file_hash
+            normalize_result["source_pdf_uri"] = gcs_uri
+            normalize_result["page_count"] = ocr_result["page_count"]
+            _save_checkpoint(contract_id, "s5_normalize", normalize_result)
+
+        # Stage 6 — LLM Judge
+        judge_result = _load_checkpoint(contract_id, "s6_judge")
+        if judge_result is None:
+            judge_result = _with_retry(
+                lambda: run_judge(dlp_result["masked_text"], normalize_result, contract_id),
+                "judge", contract_id,
+            )
+            _save_checkpoint(contract_id, "s6_judge", judge_result)
+
+        # Stage 7 — Delivery (not checkpointed — always re-runs to ensure final state is written)
+        result = run_deliver(normalize_result, judge_result, contract_id)
+
     except Exception as e:
-        log("Pipeline failed", severity="ERROR", error=str(e))
+        log("Pipeline failed — moving to dead letter", severity="ERROR",
+            contract_id=contract_id, error=str(e))
+        set_pipeline_status(contract_id, "dead_letter", error=str(e))
+        write_audit_event(contract_id, "pipeline", "dead_lettered", {"error": str(e)})
         raise
     finally:
         clear_context()
 
+    set_pipeline_status(contract_id, "completed")
     set_context(stage="pipeline")
     log("Pipeline complete", **result)
     return result

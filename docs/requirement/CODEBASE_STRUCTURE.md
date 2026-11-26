@@ -132,6 +132,8 @@ Stage 7 → delivery/gcs_writer.py             (output)
         → delivery/storage_backend.py       (audit — every stage, routes to Firestore or BigQuery)
 ```
 
+**Resumable pipeline**: `run()` checkpoints each stage output to `gs://<bucket>/processing/contracts/<id>/s1_ocr.json` … `s6_judge.json`. On retry, completed stages are skipped automatically. Each stage is wrapped in `_with_retry()` with exponential backoff (2s → 4s → 8s, up to `PIPELINE_MAX_RETRIES` attempts). Contracts that exhaust all retries are moved to `dead_letter` status in Firestore/BigQuery.
+
 ---
 
 ### `common/`
@@ -234,9 +236,9 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 | File | Responsibility |
 |------|----------------|
 | `gcs_writer.py` | Serializes ContractRecord to JSON and writes to `gs://<GCS_BUCKET>/<GCS_CURATED_PREFIX>/contracts/`. |
-| `storage_backend.py` | Factory -- re-exports the correct backend functions based on `STORAGE_BACKEND` env var. |
-| `firestore_client.py` | Firestore implementation -- upsert_contract, write_audit_event, get_contract, get_contract_by_hash, get_pending_review, update_review_decision. |
-| `bigquery_client.py` | BigQuery implementation -- same 6-function interface as firestore_client.py. Uses MERGE for upserts, streaming insert for audit events. |
+| `storage_backend.py` | Factory — re-exports the correct backend functions based on `STORAGE_BACKEND` env var. Exports: `upsert_contract`, `write_audit_event`, `get_contract`, `get_contract_by_hash`, `get_pending_review`, `update_review_decision`, `list_contracts`, `set_pipeline_status`, `get_pipeline_status`. |
+| `firestore_client.py` | Firestore implementation — all 9 functions above. `set_pipeline_status()` writes `pipeline_status` + optional `pipeline_error` to the contract document. `get_pipeline_status()` reads it back. |
+| `bigquery_client.py` | BigQuery implementation — same 9-function interface as firestore_client.py. `set_pipeline_status()` uses MERGE to upsert `pipeline_status` and `pipeline_error` columns. Uses MERGE for contract upserts, streaming insert for audit events. |
 | `webhook_client.py` | Pushes approved `ContractRecord` JSON to third party endpoint via HTTP POST. 3 retries with exponential backoff (2s, 4s, 8s). Disabled by default (`WEBHOOK_ENABLED=false`). |
 
 `ContractRecord` top-level fields persisted to both backends:
@@ -246,6 +248,8 @@ Writes approved contract JSON to GCS and records all audit/state events to the c
 | `contract_id` | STRING | System generated ID |
 | `confidence_score` | FLOAT64 | Overall LLM Judge score (0.0-1.0) |
 | `extraction_status` | STRING | Pending / Approved / Review Required / Rejected |
+| `pipeline_status` | STRING | running / completed / dead_letter |
+| `pipeline_error` | STRING | Error message when `pipeline_status = dead_letter` |
 | `field_scores` | JSON | Per-section LLM Judge scores e.g. `{"credit_card_pricing": 0.54, ...}` |
 | `judge_issues` | JSON | List of specific issues flagged by LLM Judge |
 | `source_pdf_uri` | STRING | GCS URI of the raw input PDF |
@@ -409,6 +413,10 @@ DUPLICATE_CHECK_ENABLED=true
 
 # Max upload file size in MB -- default is 50
 MAX_FILE_SIZE_BYTES=50
+
+# Pipeline retry -- max attempts per stage before dead-lettering (default: 3)
+# Set to 1 to disable retries
+PIPELINE_MAX_RETRIES=3
 
 # Webhook -- push approved contracts to third party (disabled by default)
 WEBHOOK_ENABLED=false

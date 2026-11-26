@@ -10,6 +10,8 @@ if config.STORAGE_BACKEND == "bigquery":
         get_pending_review,
         update_review_decision,
         list_contracts,
+        set_pipeline_status,
+        get_pipeline_status,
     )
 elif config.STORAGE_BACKEND == "firestore":
     from trace_ai.delivery.firestore_client import (
@@ -20,6 +22,8 @@ elif config.STORAGE_BACKEND == "firestore":
         get_pending_review,
         update_review_decision,
         list_contracts,
+        set_pipeline_status,
+        get_pipeline_status,
     )
 else:
     msg = f"Invalid STORAGE_BACKEND '{config.STORAGE_BACKEND}'. Must be 'bigquery' or 'firestore'."

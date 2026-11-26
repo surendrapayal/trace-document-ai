@@ -99,7 +99,7 @@ All data is stored inside this single bucket under separate prefixes:
 gs://<GCS_BUCKET>/
     landing/                                  ← drop PDFs here to trigger pipeline
     raw/contracts/<contract_id>/<file>.pdf    ← PDFs moved here from landing/
-    processing/
+    processing/contracts/<contract_id>/       ← stage checkpoints (s1_ocr.json … s6_judge.json)
     curated/contracts/<contract_id>/output.json
     kb/documents/
     kb/chunks/
@@ -361,6 +361,8 @@ trace-document-ai/
 |---|---|---|
 | Orchestration | Python `pipeline.py` | Direct, debuggable -- no Cloud Workflows overhead for POC |
 | Pipeline trigger | GCS landing zone + REST API | Drop PDF → call trigger → pipeline starts. Ready for Eventarc automation later |
+| Pipeline resume | GCS stage checkpoints + `pipeline_status` | Each stage output saved to `processing/contracts/<id>/s1_ocr.json` … `s6_judge.json`. Retry skips completed stages automatically. Dead-letter after `PIPELINE_MAX_RETRIES` exhausted. |
+| Retry strategy | Exponential backoff per stage | Gemini / Document AI are transient-failure prone. 2s → 4s → 8s per stage, configurable via `PIPELINE_MAX_RETRIES`. |
 | LLM | Vertex AI Gemini 1.5 Pro | Best-in-class extraction, native GCP, JSON mode |
 | RAG | Vertex AI Vector Search | Native GCP, no extra infra, integrates with Embeddings API |
 | Operational store | Firestore (default) or BigQuery | Configurable via `STORAGE_BACKEND` -- Firestore for production, BigQuery for POC |
@@ -391,6 +393,7 @@ See `.env.example` for the full list. Key variables:
 | `BIGQUERY_DATASET` | BigQuery dataset name (when `STORAGE_BACKEND=bigquery`) |
 | `CONFIDENCE_THRESHOLD_APPROVE` | Default: `0.85` |
 | `CONFIDENCE_THRESHOLD_REVIEW` | Default: `0.60` |
+| `PIPELINE_MAX_RETRIES` | Max stage retry attempts before dead-letter -- default: `3` |
 | `WEBHOOK_ENABLED` | `true` to push approved contracts to third party -- default: `false` |
 | `WEBHOOK_URL` | Third party endpoint URL |
 | `WEBHOOK_SECRET` | Bearer token sent in `Authorization` header |

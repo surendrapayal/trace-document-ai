@@ -642,6 +642,73 @@ curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Rev
 
 ---
 
+## Pipeline Resume — Checkpointing & Retry
+
+The pipeline is fully resumable. On failure, re-triggering the same `contract_id` automatically skips completed stages and resumes from the failed one.
+
+### How it works
+
+After each stage completes, `run()` writes the stage output as a JSON checkpoint to GCS:
+
+```
+gs://<bucket>/processing/contracts/CNT-XXX/
+    s1_ocr.json        ← written after OCR completes
+    s2_dlp.json        ← written after DLP completes
+    s3_rag.json        ← written after RAG completes
+    s4_extract.json    ← written after Gemini extraction completes
+    s5_normalize.json  ← written after normalization completes
+    s6_judge.json      ← written after LLM Judge completes
+```
+
+On retry, `run()` checks each checkpoint in order. If the file exists, the stage is skipped and its output is loaded from GCS. If it doesn't exist, the stage runs and its output is saved.
+
+Stage 7 (Delivery) is intentionally not checkpointed — it always re-runs to ensure the final contract state is written correctly.
+
+### Pipeline status
+
+`pipeline_status` is tracked in Firestore/BigQuery alongside the contract record:
+
+| Status | Meaning |
+|---|---|
+| `running` | Pipeline is currently executing |
+| `completed` | All 7 stages finished successfully |
+| `dead_letter` | All retries exhausted — manual intervention required |
+
+On entry, `run()` checks `pipeline_status`:
+- `completed` → skips immediately, returns early
+- `dead_letter` → skips immediately, logs ERROR, returns early
+- anything else → sets to `running` and proceeds
+
+### Retry with exponential backoff
+
+Each stage is wrapped in `_with_retry()`. On transient failure, the stage is retried up to `PIPELINE_MAX_RETRIES` times (default: 3) with exponential backoff:
+
+| Attempt | Wait |
+|---|---|
+| 1 | 2s |
+| 2 | 4s |
+| 3 | 8s |
+
+If all attempts fail, the exception propagates, `pipeline_status` is set to `dead_letter`, and a `pipeline.dead_lettered` audit event is written.
+
+### Forcing a full re-run
+
+To reprocess a contract from scratch (e.g. after fixing extraction logic), delete the checkpoints from GCS:
+
+```bash
+gsutil -m rm gs://<bucket>/processing/contracts/CNT-XXX/s*.json
+```
+
+Then re-trigger. The `pipeline_status` guard will also need to be cleared — either delete the contract record or set `pipeline_status` to `null` in Firestore/BigQuery.
+
+### Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `PIPELINE_MAX_RETRIES` | `3` | Max attempts per stage before dead-lettering. Set to `1` to disable retries. |
+
+---
+
 ## Audit Events Reference
 
 | Stage | Event | `details` fields |
@@ -662,3 +729,4 @@ curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Rev
 | `delivery` | `routed_to_review_queue` | — |
 | `delivery` | `rejected` | — |
 | `delivery` | `webhook_delivered`, `webhook_failed` | (when `WEBHOOK_ENABLED=true`) |
+| `pipeline` | `dead_lettered` | `error` |

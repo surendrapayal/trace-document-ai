@@ -103,6 +103,8 @@ class Config:
     DUPLICATE_CHECK_ENABLED: bool = os.getenv("DUPLICATE_CHECK_ENABLED", "true").lower() == "true"
     MAX_FILE_SIZE_BYTES: int = int(os.getenv("MAX_FILE_SIZE_BYTES", "50")) * 1024 * 1024
 
+    PIPELINE_MAX_RETRIES: int = int(os.getenv("PIPELINE_MAX_RETRIES", "3"))
+
     WEBHOOK_ENABLED: bool = os.getenv("WEBHOOK_ENABLED", "false").lower() == "true"
     WEBHOOK_URL: str = os.getenv("WEBHOOK_URL", "")
     WEBHOOK_SECRET: str = os.getenv("WEBHOOK_SECRET", "")

@@ -74,3 +74,16 @@ def update_review_decision(contract_id: str, reviewer: str, decision: str, notes
         "reviewer": reviewer, "decision": decision, "notes": notes,
     })
     log("Review decision recorded", decision=decision, reviewer=reviewer)
+
+
+def set_pipeline_status(contract_id: str, status: str, error: str | None = None) -> None:
+    data: dict = {"pipeline_status": status, "updated_at": _now()}
+    if error is not None:
+        data["pipeline_error"] = error
+    _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS).document(contract_id).set(data, merge=True)
+    log("Pipeline status updated", severity="DEBUG", pipeline_status=status)
+
+
+def get_pipeline_status(contract_id: str) -> str | None:
+    doc = _db.collection(config.FIRESTORE_COLLECTION_CONTRACTS).document(contract_id).get()
+    return doc.to_dict().get("pipeline_status") if doc.exists else None
