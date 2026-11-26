@@ -285,16 +285,38 @@ def main():
 
     # ── Individual stages ──
     if args.stage == "ingest":
-        if not args.local_pdf:
-            print("--local-pdf is required for --stage ingest", file=sys.stderr)
+        if not args.local_pdf and not args.gcs_uri:
+            print("--local-pdf or --gcs-uri is required for --stage ingest", file=sys.stderr)
             sys.exit(1)
-        from trace_ai.ingestion.upload_handler import upload_contract, upload_contracts_from_folder
-        import os
-        if os.path.isdir(args.local_pdf):
-            results = upload_contracts_from_folder(args.local_pdf)
-            _write({"uploaded": results, "total": len(results)}, args.output_file)
+        if args.gcs_uri:
+            from trace_ai.ingestion.upload_handler import upload_contract_from_gcs
+            from trace_ai.common.gcs_client import list_blobs
+            if args.gcs_uri.endswith("/"):
+                uri = args.gcs_uri[len("gs://"):]
+                bucket_name, prefix = uri.split("/", 1)
+                blobs = [b for b in list_blobs(bucket_name, prefix) if b.lower().endswith(".pdf")]
+                if not blobs:
+                    print(f"No PDF files found at: {args.gcs_uri}", file=sys.stderr)
+                    sys.exit(1)
+                results, failed = [], []
+                for blob in sorted(blobs):
+                    try:
+                        results.append(upload_contract_from_gcs(blob))
+                    except Exception as e:
+                        failed.append({"blob": blob, "error": str(e)})
+                _write({"uploaded": results, "failed": failed, "total": len(blobs)}, args.output_file)
+            else:
+                uri = args.gcs_uri[len("gs://"):]
+                bucket_name, blob = uri.split("/", 1)
+                _write(upload_contract_from_gcs(blob, contract_id), args.output_file)
         else:
-            _write(upload_contract(args.local_pdf, contract_id), args.output_file)
+            from trace_ai.ingestion.upload_handler import upload_contract, upload_contracts_from_folder
+            import os
+            if os.path.isdir(args.local_pdf):
+                results = upload_contracts_from_folder(args.local_pdf)
+                _write({"uploaded": results, "total": len(results)}, args.output_file)
+            else:
+                _write(upload_contract(args.local_pdf, contract_id), args.output_file)
 
     elif args.stage == "ocr":
         if not contract_id:

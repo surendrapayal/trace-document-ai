@@ -183,15 +183,21 @@ Each stage can be run independently using `--stage`. Every stage writes its outp
 
 **Stage 0 — Ingestion (upload only, no `--stage` flag):**
 ```bash
-# Upload a single PDF — prints contract_id and GCS URI
+# Upload a single local PDF
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf
 
-# Upload all PDFs in a folder
+# Upload all PDFs in a local folder
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/
+
+# Move a single PDF from GCS landing/ to raw/
+python -m trace_ai.pipeline --stage ingest --gcs-uri gs://<GCS_BUCKET>/landing/contract.pdf
+
+# Move all PDFs in GCS landing/ to raw/
+python -m trace_ai.pipeline --stage ingest --gcs-uri gs://<GCS_BUCKET>/landing/
 
 # Save output to a file
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf --output s0_ingest.json
-python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/ --output s0_ingest.json
+python -m trace_ai.pipeline --stage ingest --gcs-uri gs://<GCS_BUCKET>/landing/contract.pdf --output s0_ingest.json
 
 # Or upload + run full pipeline in one command
 python -m trace_ai.pipeline --local-pdf docs/contract/your_contract.pdf

@@ -87,24 +87,31 @@ trace-pipeline --local-pdf /path/to/contract.pdf
 
 Pass `--stage <name>` to run a single stage. Each stage serializes its output to `--output` (JSON file) or stdout if omitted, and reads prior stage outputs via input flags.
 
-**Stage 0 — Ingestion** — use `--stage ingest` with `--local-pdf`. Accepts a single file or a folder:
+**Stage 0 — Ingestion** — use `--stage ingest` with `--local-pdf` or `--gcs-uri`. Accepts a single file or a folder:
 
 ```bash
-# Upload a single PDF
+# Upload a single local PDF
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf
 
-# Upload all PDFs in a folder
+# Upload all PDFs in a local folder
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/
+
+# Move a single PDF from GCS landing/ to raw/
+python -m trace_ai.pipeline --stage ingest --gcs-uri gs://<GCS_BUCKET>/landing/contract.pdf
+
+# Move all PDFs in GCS landing/ to raw/
+python -m trace_ai.pipeline --stage ingest --gcs-uri gs://<GCS_BUCKET>/landing/
 
 # Save output to file
 python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/your_contract.pdf --output s0_ingest.json
-python -m trace_ai.pipeline --stage ingest --local-pdf docs/contract/ --output s0_ingest.json
+python -m trace_ai.pipeline --stage ingest --gcs-uri gs://<GCS_BUCKET>/landing/contract.pdf --output s0_ingest.json
 ```
 
 **Single file output**: `{ contract_id, gcs_uri, file_size_bytes, file_hash }`  
-**Folder output**: `{ uploaded: [ { contract_id, gcs_uri, file_size_bytes, file_hash }, ... ], total: N }`
+**Folder output**: `{ uploaded: [ { contract_id, gcs_uri, file_size_bytes, file_hash }, ... ], failed: [...], total: N }`
 
-Note the `contract_id` and `gcs_uri` from the output — you need both for `--stage ocr`.
+- `--local-pdf` uploads from local disk directly to `raw/` via `upload_contract()`
+- `--gcs-uri` moves from `landing/` to `raw/` via `upload_contract_from_gcs()` — same function used by the REST trigger endpoint
 
 ```bash
 # Stage 1 — OCR (use gcs_uri and contract_id from Stage 0 output above)
@@ -141,7 +148,7 @@ python -m trace_ai.pipeline --stage deliver \
 
 | Stage | `--input` reads | Extra input flag | `--output` writes |
 |---|---|---|---|
-| `ingest` | — | `--local-pdf` | `contract_id`, `gcs_uri`, `file_size_bytes`, `file_hash` |
+| `ingest` | — | `--local-pdf` or `--gcs-uri` | `contract_id`, `gcs_uri`, `file_size_bytes`, `file_hash` |
 | `ocr` | — | `--gcs-uri` or `--local-pdf` | `full_text`, `key_value_pairs`, `tables`, `page_count` |
 | `dlp` | OCR output | — | `masked_text`, `pii_types` |
 | `rag` | DLP output | — | `rag_context` |
@@ -157,14 +164,14 @@ python -m trace_ai.pipeline --stage deliver \
 ## Stage 0 — Ingestion
 
 **Module**: `ingestion/upload_handler.py`
-**Triggered by**: `POST /api/v1/pipeline/trigger` (landing zone pattern) or `--local-pdf` CLI flag.
+**Triggered by**: `POST /api/v1/pipeline/trigger` (landing zone pattern), `--local-pdf` CLI flag, or `--gcs-uri` CLI flag pointing at `landing/`.
 
 **Two ingestion paths**:
 
 | Path | Function | Source |
 |---|---|---|
-| Landing zone (REST trigger) | `upload_contract_from_gcs(landing_blob)` | PDF already in `gs://<bucket>/landing/` |
-| Local file (CLI) | `upload_contract(local_path)` | PDF on local disk |
+| Landing zone (REST trigger or CLI `--gcs-uri`) | `upload_contract_from_gcs(landing_blob)` | PDF already in `gs://<bucket>/landing/` |
+| Local file (CLI `--local-pdf`) | `upload_contract(local_path)` | PDF on local disk |
 
 **`upload_contract_from_gcs()` — landing zone path**:
 - Downloads PDF bytes from `landing/` to compute SHA256 hash

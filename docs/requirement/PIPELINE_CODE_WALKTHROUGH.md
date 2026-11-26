@@ -317,6 +317,29 @@ parser.add_argument("--stage", choices=["ingest","ocr","dlp","rag","extract","no
 ```
 `--stage` restricts input to the 8 valid stage names. If omitted, the full pipeline runs.
 
+The `ingest` stage accepts either `--local-pdf` or `--gcs-uri`:
+
+```python
+if args.stage == "ingest":
+    if args.gcs_uri:
+        # GCS landing zone path
+        if args.gcs_uri.endswith("/"):
+            # Folder: list all .pdf blobs under the prefix, move each to raw/
+            blobs = [b for b in list_blobs(bucket_name, prefix) if b.lower().endswith(".pdf")]
+            for blob in sorted(blobs):
+                results.append(upload_contract_from_gcs(blob))
+        else:
+            # Single blob: move from landing/ to raw/
+            upload_contract_from_gcs(blob, contract_id)
+    else:
+        # Local path
+        if os.path.isdir(args.local_pdf):
+            upload_contracts_from_folder(args.local_pdf)
+        else:
+            upload_contract(args.local_pdf, contract_id)
+```
+`--gcs-uri` triggers `upload_contract_from_gcs()` — the same function used by `POST /api/v1/pipeline/trigger`. A trailing `/` signals a folder scan: `list_blobs()` lists all `.pdf` blobs under the prefix and each is moved from `landing/` to `raw/` individually. Without a trailing `/`, a single blob is moved. `--local-pdf` uses the original `upload_contract()` / `upload_contracts_from_folder()` path which uploads from local disk directly to `raw/`.
+
 ```python
 # GCS folder — run full pipeline for every PDF under the prefix
 if args.gcs_uri and args.gcs_uri.endswith("/") and not args.stage:
