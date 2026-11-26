@@ -63,12 +63,17 @@ class CompanyInformation(BaseModel):
     dba_name: Optional[str] = None
     address: Optional[str] = None
     city_state_zip: Optional[str] = None
+    mailing_address: Optional[str] = None
+    mailing_city_state_zip: Optional[str] = None
     phone: Optional[str] = None
+    fax: Optional[str] = None
     website: Optional[str] = None
     email: Optional[str] = None
     primary_contact_name: Optional[str] = None
+    primary_contact_title: Optional[str] = None
     primary_contact_phone: Optional[str] = None
     hic_admin_name: Optional[str] = None
+    hic_admin_phone: Optional[str] = None
     hic_admin_email: Optional[str] = None
 
 

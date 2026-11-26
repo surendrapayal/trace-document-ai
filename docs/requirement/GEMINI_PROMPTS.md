@@ -17,20 +17,29 @@ Return a JSON object with exactly these fields:
 {
   "merchant_legal_name": "",       // Legal business name from the Legal section
   "dba_name": "",                  // DBA name if different from legal name
-  "address": "",                   // Street address
-  "city_state_zip": "",            // City, State ZIP
+  "address": "",                   // Street address (Legal block)
+  "city_state_zip": "",            // City, State ZIP (Legal block)
+  "mailing_address": "",           // Street address (Mailing block)
+  "mailing_city_state_zip": "",    // City, State ZIP (Mailing block)
   "phone": "",                     // Primary phone number
+  "fax": "",                       // Fax number
   "website": "",                   // Website URL if present
   "email": "",                     // Primary email
   "primary_contact_name": "",      // Name next to "Primary:" label
+  "primary_contact_title": "",     // Title/role next to primary contact name
   "primary_contact_phone": "",     // Phone next to primary contact
   "hic_admin_name": "",            // HIC Admin name
+  "hic_admin_phone": "",           // HIC Admin phone
   "hic_admin_email": ""            // HIC Admin email
 }
 
 Rules:
-- Use the LEGAL address block for merchant_legal_name and address
+- Use the LEGAL address block for merchant_legal_name, address, and city_state_zip
+- Use the MAILING address block for mailing_address and mailing_city_state_zip — if mailing address is the same as legal, still extract it; if absent set both to null
 - If no DBA name is present, set dba_name to null
+- fax is the fax number from the company information section — set to null if not present
+- primary_contact_title is the role/title next to the primary contact name — set to null if not present
+- hic_admin_phone is the phone number in the HIC Admin row — set to null if not present
 - Return null for any field not found in the document
 - Do not infer or guess values — only extract what is explicitly stated
 

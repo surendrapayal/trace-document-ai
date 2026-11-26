@@ -70,14 +70,19 @@ class AmexDetails(BaseModel):
 class CompanyInformation(BaseModel):
     merchant_legal_name: str                # e.g. Chet Shoes LLC
     dba_name: Optional[str]
-    address: Optional[str]
-    city_state_zip: Optional[str]
+    address: Optional[str]                  # Legal street address
+    city_state_zip: Optional[str]           # Legal city, state ZIP
+    mailing_address: Optional[str]          # Mailing street address (if different)
+    mailing_city_state_zip: Optional[str]   # Mailing city, state ZIP
     phone: Optional[str]
+    fax: Optional[str]
     website: Optional[str]
     email: Optional[str]
     primary_contact_name: Optional[str]
+    primary_contact_title: Optional[str]    # Role/title next to primary contact
     primary_contact_phone: Optional[str]
     hic_admin_name: Optional[str]
+    hic_admin_phone: Optional[str]
     hic_admin_email: Optional[str]
 
 
@@ -221,10 +226,17 @@ class ContractRecord(BaseModel):
     "merchant_legal_name": "Chet Shoes LLC",
     "address": "8870 Rendova St NE",
     "city_state_zip": "Circle Pines, MN 55014",
+    "mailing_address": null,
+    "mailing_city_state_zip": null,
     "phone": "(763) 253-1079",
+    "fax": null,
     "website": "http://chetsshoes.com",
     "primary_contact_name": "Emily Dehmer",
-    "primary_contact_phone": "(612) 655-6313"
+    "primary_contact_title": null,
+    "primary_contact_phone": "(612) 655-6313",
+    "hic_admin_name": null,
+    "hic_admin_phone": null,
+    "hic_admin_email": null
   },
   "merchant_details": {
     "business_type": "Private",
@@ -385,10 +397,16 @@ class ContractRecord(BaseModel):
     "merchant_legal_name": "Fitchburg Historical Society",
     "address": "781 Main Street",
     "city_state_zip": "Fitchburg, MA 01420",
+    "mailing_address": null,
+    "mailing_city_state_zip": null,
     "phone": "(978) 345-1157",
+    "fax": null,
+    "website": null,
     "primary_contact_name": "Susan Navarre",
+    "primary_contact_title": null,
     "primary_contact_phone": "(978) 345-1157",
     "hic_admin_name": "Susan Navarre",
+    "hic_admin_phone": null,
     "hic_admin_email": "director@fitchburghistoricalsociety.com"
   },
   "merchant_details": {
