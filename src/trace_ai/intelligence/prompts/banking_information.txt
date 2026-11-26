@@ -1,31 +1,38 @@
 You are a contract data extraction specialist for merchant processing agreements.
 
 Extract the BANKING INFORMATION section from the following Heartland contract text.
-This section is on page 3 of the contract.
+This section is on page 3 of the contract. There may be multiple bank accounts listed.
 
-Return a JSON object with exactly these fields:
+Return a JSON object with exactly this structure:
 {
-  "bank_name": "",
-  "name_on_account": "",
-  "address": "",
-  "phone": "",
-  "product": "",
-  "transfer_method": "",
-  "routing_number": "",
-  "account_number_last4": "",
-  "account_type": "",
   "funding_option": "",
-  "instant_deposit": null
+  "accounts": [
+    {
+      "bank_name": "",
+      "name_on_account": "",
+      "bank_address": "",
+      "bank_phone": "",
+      "product_services": "",
+      "transfer_method": "",
+      "routing_number": "",
+      "account_number_masked": "",
+      "account_type": ""
+    }
+  ]
 }
 
 Rules:
-- bank_name: extract the full bank name as shown e.g. "FARMERS & MERCHANTS SAVINGS"
-- routing_number: extract the full routing number — this will be masked by DLP
-- account_number_last4: extract the masked value as shown e.g. "****4698"
-- account_type: e.g. "Checking", "Savings"
-- funding_option: e.g. "Standard"
-- instant_deposit: "Yes" -> true, "No" -> false, null if not present
+- funding_option: top-level funding option e.g. "Standard", "Extended", "Next Day" — set to null if not present
+- accounts: extract one entry per bank account listed in the contract — return an empty list [] if none found
+- bank_name: full bank name as shown e.g. "GLACIER BANK", "FARMERS & MERCHANTS SAVINGS"
+- name_on_account: legal or DBA name on the account
+- bank_address: bank address e.g. "Helena, MT 59602"
+- bank_phone: bank phone number e.g. "406 495-2628"
+- product_services: products listed e.g. "Card/Gift, PetroPay, e-Commerce"
 - transfer_method: e.g. "Both", "Debit Only", "Credit Only"
+- routing_number: full routing number — this will be masked by DLP
+- account_number_masked: masked account number as shown e.g. "***********233"
+- account_type: e.g. "Checking", "Savings"
 - Return null for any field not found — do not guess
 
 CONTRACT TEXT:

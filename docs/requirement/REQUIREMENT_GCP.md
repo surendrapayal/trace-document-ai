@@ -214,7 +214,7 @@ All contract documents are normalized into a common Pydantic schema — `Contrac
 | Pricing | `CreditCardPricing` | billing_model, card_rates, recurring_fees, Amex details |
 | Processing | `ProcessingDetails` | card_swiped_pct, face_to_face_pct, website flag |
 | Owners | `List[OwnerOfficer]` | name, title, ownership_pct, DOB, SSN last 4, DL last 4 |
-| Banking | `BankingInformation` | bank_name, routing_number, account_number_last4 |
+| Banking | `BankingInformation` | funding_option, accounts[bank_name, routing_number, account_number_masked] |
 | Validation | (ContractRecord fields) | confidence_score, extraction_status, reviewed_by |
 
 Billing models supported: `IC++`, `Flat Rate`, `Tiered`, `Unknown`

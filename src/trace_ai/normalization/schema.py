@@ -132,18 +132,21 @@ class OwnerOfficer(BaseModel):
     citizenship: Optional[str] = None
 
 
-class BankingInformation(BaseModel):
+class BankingAccount(BaseModel):
     bank_name: str
     name_on_account: Optional[str] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    product: Optional[str] = None
+    bank_address: Optional[str] = None
+    bank_phone: Optional[str] = None
+    product_services: Optional[str] = None
     transfer_method: Optional[str] = None
     routing_number: Optional[str] = None
-    account_number_last4: Optional[str] = None
+    account_number_masked: Optional[str] = None
     account_type: Optional[str] = None
+
+
+class BankingInformation(BaseModel):
     funding_option: Optional[str] = None
-    instant_deposit: Optional[bool] = None
+    accounts: list[BankingAccount]
 
 
 class ProcessorInfo(BaseModel):

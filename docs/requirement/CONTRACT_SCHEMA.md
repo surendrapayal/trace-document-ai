@@ -141,18 +141,21 @@ class OwnerOfficer(BaseModel):
     citizenship: Optional[str]              # e.g. US Citizen
 
 
+class BankingAccount(BaseModel):
+    bank_name: str                          # e.g. GLACIER BANK
+    name_on_account: Optional[str]          # Legal or DBA name on account
+    bank_address: Optional[str]             # Bank address e.g. Helena, MT 59602
+    bank_phone: Optional[str]               # Bank phone
+    product_services: Optional[str]         # e.g. Card/Gift, PetroPay, e-Commerce
+    transfer_method: Optional[str]          # e.g. Both, Debit Only, Credit Only
+    routing_number: Optional[str]           # Full routing number — masked by DLP
+    account_number_masked: Optional[str]    # Masked account number e.g. ***********233
+    account_type: Optional[str]             # e.g. Checking, Savings
+
+
 class BankingInformation(BaseModel):
-    bank_name: str                          # e.g. FARMERS & MERCHANTS SAVI, FIDELITY CO-OP BANK
-    name_on_account: Optional[str]          # e.g. Chet Shoes LLC, Fitchburg Historical Society
-    address: Optional[str]                  # Bank address
-    phone: Optional[str]                    # Bank phone
-    product: Optional[str]                  # e.g. Card/Gift, PetroPay, e-Commerce
-    transfer_method: Optional[str]          # e.g. Both
-    routing_number: Optional[str]           # e.g. 073903244 — sensitive
-    account_number_last4: Optional[str]     # Last 4 only e.g. ****4698 — PII flagged by DLP
-    account_type: Optional[str]             # e.g. Checking
-    funding_option: Optional[str]           # e.g. Standard
-    instant_deposit: Optional[bool]         # Is prospect interested in Instant Deposit
+    funding_option: Optional[str]           # e.g. Standard, Extended, Next Day
+    accounts: List[BankingAccount]          # One entry per bank account listed
 
 
 class ProcessorInfo(BaseModel):
@@ -347,16 +350,20 @@ class ContractRecord(BaseModel):
     }
   ],
   "banking_information": {
-    "bank_name": "FARMERS & MERCHANTS SAVINGS",
-    "name_on_account": "Chet Shoes LLC",
-    "address": "Manchester, IA 52057",
-    "phone": "319 730-5965",
-    "product": "Card/Gift, PetroPay, e-Commerce",
-    "transfer_method": "Both",
-    "routing_number": "073903244",
-    "account_number_last4": "****4698",
-    "account_type": "Checking",
-    "funding_option": "Standard"
+    "funding_option": "Standard",
+    "accounts": [
+      {
+        "bank_name": "FARMERS & MERCHANTS SAVINGS",
+        "name_on_account": "Chet Shoes LLC",
+        "bank_address": "Manchester, IA 52057",
+        "bank_phone": "319 730-5965",
+        "product_services": "Card/Gift, PetroPay, e-Commerce",
+        "transfer_method": "Both",
+        "routing_number": "073903244",
+        "account_number_masked": "***********4698",
+        "account_type": "Checking"
+      }
+    ]
   },
   "confidence_score": 0.95,
   "extraction_status": "Approved",
@@ -509,17 +516,20 @@ class ContractRecord(BaseModel):
     }
   ],
   "banking_information": {
-    "bank_name": "FIDELITY CO-OP BANK",
-    "name_on_account": "Fitchburg Historical Society",
-    "address": "Leominster, MA 01453",
-    "phone": "978 870-1466",
-    "product": "Card/Gift",
-    "transfer_method": "Both",
-    "routing_number": "211370707",
-    "account_number_last4": "****3011",
-    "account_type": "Checking",
     "funding_option": "Standard",
-    "instant_deposit": false
+    "accounts": [
+      {
+        "bank_name": "FIDELITY CO-OP BANK",
+        "name_on_account": "Fitchburg Historical Society",
+        "bank_address": "Leominster, MA 01453",
+        "bank_phone": "978 870-1466",
+        "product_services": "Card/Gift",
+        "transfer_method": "Both",
+        "routing_number": "211370707",
+        "account_number_masked": "***********3011",
+        "account_type": "Checking"
+      }
+    ]
   },
   "confidence_score": 0.95,
   "extraction_status": "Approved",

@@ -287,3 +287,47 @@ ORIGINAL CONTRACT TEXT:
 EXTRACTED JSON:
 {extracted_json}
 ```
+
+---
+
+## Prompt 7 — Banking Information Extraction
+
+**File:** `intelligence/prompts/banking_information.txt`
+
+```
+You are a contract data extraction specialist for merchant processing agreements.
+
+Extract the BANKING INFORMATION section from the following Heartland contract text.
+This section is on page 3 of the contract. There may be multiple bank accounts listed.
+
+Return a JSON object with exactly this structure:
+{
+  "funding_option": "",            // e.g. "Standard", "Extended", "Next Day"
+  "accounts": [
+    {
+      "bank_name": "",             // Full bank name e.g. "GLACIER BANK"
+      "name_on_account": "",       // Legal or DBA name on account
+      "bank_address": "",          // Bank address e.g. "Helena, MT 59602"
+      "bank_phone": "",            // Bank phone
+      "product_services": "",      // e.g. "Card/Gift, PetroPay, e-Commerce"
+      "transfer_method": "",       // e.g. "Both", "Debit Only", "Credit Only"
+      "routing_number": "",        // Full routing number — masked by DLP
+      "account_number_masked": "", // Masked account number e.g. "***********233"
+      "account_type": ""           // e.g. "Checking", "Savings"
+    }
+  ]
+}
+
+Rules:
+- funding_option: top-level funding option — set to null if not present
+- accounts: one entry per bank account listed — return [] if none found
+- routing_number: extract the full routing number — this will be masked by DLP
+- account_number_masked: extract the masked value as shown e.g. "***********233"
+- Return null for any field not found — do not guess
+
+CONTRACT TEXT:
+{contract_text}
+
+RAG CONTEXT:
+{rag_context}
+```

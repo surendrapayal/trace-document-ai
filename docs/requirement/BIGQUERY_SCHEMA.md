@@ -326,33 +326,41 @@ JSON array — one object per owner or officer.
 
 ```json
 {
-  "bank_name": "First National Bank",
-  "name_on_account": "Chet Shoes LLC",
-  "address": "789 Bank St",
-  "phone": "555-666-7777",
-  "product": "Checking",
-  "transfer_method": "ACH",
-  "routing_number": "[MASKED]",
-  "account_number_last4": "[MASKED]",
-  "account_type": "Checking",
   "funding_option": "Standard",
-  "instant_deposit": false
+  "accounts": [
+    {
+      "bank_name": "First National Bank",
+      "name_on_account": "Chet Shoes LLC",
+      "bank_address": "789 Bank St, Springfield, IL 62701",
+      "bank_phone": "555-666-7777",
+      "product_services": "Card/Gift",
+      "transfer_method": "Both",
+      "routing_number": "[MASKED]",
+      "account_number_masked": "[MASKED]",
+      "account_type": "Checking"
+    }
+  ]
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
+| `funding_option` | string\|null | e.g. Standard, Extended, Next Day |
+| `accounts` | array | List of BankingAccount objects (see below) |
+
+**BankingAccount fields:**
+
+| Field | Type | Description |
+|---|---|---|
 | `bank_name` | string | Required — bank name |
 | `name_on_account` | string\|null | Account holder name |
-| `address` | string\|null | Bank address |
-| `phone` | string\|null | Bank phone |
-| `product` | string\|null | Account product type |
-| `transfer_method` | string\|null | ACH or Check |
+| `bank_address` | string\|null | Bank address |
+| `bank_phone` | string\|null | Bank phone |
+| `product_services` | string\|null | Account product/services |
+| `transfer_method` | string\|null | e.g. Both, Debit Only, Credit Only |
 | `routing_number` | string\|null | Routing number — masked by Cloud DLP |
-| `account_number_last4` | string\|null | Account last 4 — masked by Cloud DLP |
+| `account_number_masked` | string\|null | Masked account number — masked by Cloud DLP |
 | `account_type` | string\|null | Checking or Savings |
-| `funding_option` | string\|null | Standard or Instant |
-| `instant_deposit` | boolean\|null | Instant deposit enabled |
 
 ---
 
@@ -489,4 +497,4 @@ ORDER BY timestamp DESC;
 - Use `JSON_QUERY(column, '$.field')` to extract a nested object or array.
 - `audit_events` is append-only — never updated, only inserted via streaming. Do not run DML UPDATE/DELETE on this table.
 - `contracts` is upserted via MERGE on `contract_id` — safe to re-run the pipeline for the same contract.
-- PII fields (`dob`, `ssn_last4`, `drivers_license_last4`, `routing_number`, `account_number_last4`) are masked by Cloud DLP before reaching BigQuery. Values will appear as `[MASKED]` or equivalent DLP replacement tokens.
+- PII fields (`dob`, `ssn_last4`, `drivers_license_last4`, `routing_number`, `account_number_masked`) are masked by Cloud DLP before reaching BigQuery.

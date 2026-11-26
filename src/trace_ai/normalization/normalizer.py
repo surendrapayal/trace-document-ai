@@ -1,6 +1,6 @@
 from trace_ai.normalization.schema import (
     ContractRecord, ProcessorInfo, CompanyInformation, MerchantDetails,
-    CreditCardPricing, ProcessingDetails, OwnerOfficer, BankingInformation,
+    CreditCardPricing, ProcessingDetails, OwnerOfficer, BankingInformation, BankingAccount,
     CardPricingRate, RecurringFee, AmexDetails, BillingModel, SettlementType, FeeFrequency,
 )
 from trace_ai.common.logger import log
@@ -61,7 +61,11 @@ def normalize(raw: dict, contract_id: str) -> ContractRecord:
     amex = AmexDetails(**amex_raw) if amex_raw else None
 
     owners = [OwnerOfficer(**o) for o in raw.get("owners_officers", [])]
-    banking = BankingInformation(**raw.get("banking_information", {"bank_name": "Unknown"}))
+    banking_raw = raw.get("banking_information", {})
+    banking = BankingInformation(
+        funding_option=banking_raw.get("funding_option"),
+        accounts=[BankingAccount(**a) for a in banking_raw.get("accounts", [])],
+    )
 
     record = ContractRecord(
         contract_id=contract_id,
@@ -83,7 +87,6 @@ def normalize(raw: dict, contract_id: str) -> ContractRecord:
         owners_officers=owners,
         banking_information=banking,
         extracted_at=datetime.now(timezone.utc).isoformat(),
-    )
 
     log("Normalization complete", billing_model=str(record.credit_card_pricing.billing_model), owners_count=len(record.owners_officers))
     return record
