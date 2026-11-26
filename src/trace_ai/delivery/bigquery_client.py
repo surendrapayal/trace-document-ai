@@ -36,6 +36,10 @@ def upsert_contract(record: ContractRecord, gcs_uri: str | None = None) -> None:
         return f"PARSE_JSON(@{k})" if k in json_cols else f"@{k}"
 
     def _param(k: str, v) -> bigquery.ScalarQueryParameter:
+        if isinstance(v, bool):
+            return bigquery.ScalarQueryParameter(k, "BOOL", v)
+        if isinstance(v, int):
+            return bigquery.ScalarQueryParameter(k, "INT64", v)
         if isinstance(v, float):
             return bigquery.ScalarQueryParameter(k, "FLOAT64", v)
         if isinstance(v, Enum):
