@@ -16,6 +16,7 @@ Return a JSON object with exactly these fields:
       "discount_rate_cp": "",
       "discount_rate_cnp": "",
       "discount_rate": "",
+      "discount_per_item": "",
       "trans_fee_cp": "",
       "trans_fee_cnp": "",
       "trans_fee_dial": "",

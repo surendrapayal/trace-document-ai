@@ -80,6 +80,7 @@ Return a JSON object with exactly these fields:
       "discount_rate_cp": "",      // Card Present rate (Flat Rate contracts)
       "discount_rate_cnp": "",     // Card Not Present rate (Flat Rate contracts)
       "discount_rate": "",         // Single rate (IC++ contracts)
+      "discount_per_item": "",      // Per item discount
       "trans_fee_cp": "",          // Transaction fee Card Present
       "trans_fee_cnp": "",         // Transaction fee Card Not Present
       "trans_fee_dial": "",        // Transaction fee Dial
@@ -108,6 +109,7 @@ Rules:
 - billing_model: if interchange_calculation is "Flat Rate" → set to "Flat Rate"
 - Extract ALL rows from the recurring fees table including $0.00 fees
 - For IC++ contracts: use "discount_rate" field, leave "discount_rate_cp/cnp" as null
+- discount_per_item: per item discount — set to null if not present
 - For Flat Rate contracts: use "discount_rate_cp" and "discount_rate_cnp", leave "discount_rate" as null
 - Preserve original dollar formatting e.g. "$0.2100" not "0.21"
 - Return null for any field not found — do not guess

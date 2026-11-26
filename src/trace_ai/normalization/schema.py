@@ -36,6 +36,7 @@ class CardPricingRate(BaseModel):
     discount_rate_cp: Optional[str] = None
     discount_rate_cnp: Optional[str] = None
     discount_rate: Optional[str] = None
+    discount_per_item: Optional[str] = None
     trans_fee_cp: Optional[str] = None
     trans_fee_cnp: Optional[str] = None
     trans_fee_dial: Optional[str] = None

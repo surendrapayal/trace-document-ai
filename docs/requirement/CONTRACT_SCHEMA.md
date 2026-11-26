@@ -45,6 +45,8 @@ class CardPricingRate(BaseModel):
     card_type: str                          # Visa, Mastercard, Discover/JCB, Amex-AXP
     discount_rate_cp: Optional[str]         # Card Present discount rate
     discount_rate_cnp: Optional[str]        # Card Not Present discount rate
+    discount_rate: Optional[str]            # Single rate (IC++ contracts)
+    discount_per_item: Optional[str]        # Per item discount
     trans_fee_cp: Optional[str]             # Transaction fee Card Present
     trans_fee_cnp: Optional[str]            # Transaction fee Card Not Present
     trans_fee_dial: Optional[str]           # Transaction fee Dial

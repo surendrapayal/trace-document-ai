@@ -222,7 +222,8 @@ Use `JSON_VALUE()` or `JSON_QUERY()` in SQL to extract fields.
 | `card_type` | string | e.g. Visa Credit, MC Debit, Discover |
 | `discount_rate_cp` | string\|null | Card present discount rate |
 | `discount_rate_cnp` | string\|null | Card not present discount rate |
-| `discount_rate` | string\|null | Flat rate (Flat Rate billing model) |
+| `discount_rate` | string\|null | Single rate (IC++ contracts) |
+| `discount_per_item` | string\|null | Per item discount |
 | `trans_fee_cp` | string\|null | Card present transaction fee |
 | `trans_fee_cnp` | string\|null | Card not present transaction fee |
 | `trans_fee_dial` | string\|null | Dial transaction fee |
