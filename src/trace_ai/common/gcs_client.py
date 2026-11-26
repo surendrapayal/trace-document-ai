@@ -45,9 +45,10 @@ def delete_blob(bucket_name: str, blob_name: str) -> None:
 
 
 def copy_blob(src_bucket: str, src_blob: str, dst_bucket: str, dst_blob: str) -> str:
-    source = _client.bucket(src_bucket).blob(src_blob)
+    source_bucket = _client.bucket(src_bucket)
+    source = source_bucket.blob(src_blob)
     dest_bucket = _client.bucket(dst_bucket)
-    _client.copy_blob(source, dest_bucket, dst_blob)
+    source_bucket.copy_blob(source, dest_bucket, dst_blob)
     log("GCS blob copied", severity="DEBUG", src=src_blob, dst=dst_blob)
     return f"gs://{dst_bucket}/{dst_blob}"
 
