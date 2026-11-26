@@ -305,6 +305,12 @@ Stage 7 (Delivery) is intentionally not checkpointed — it always re-runs to en
 ```
 On unrecoverable failure (all retries exhausted): sets `pipeline_status` to `dead_letter`, writes a `pipeline.dead_lettered` audit event with the error message, and re-raises so the caller sees the exception. On success: sets `pipeline_status` to `completed`. `clear_context()` always runs in `finally` to reset the MDC logger state.
 
+**Manually resuming a dead-lettered contract** requires 4 steps:
+1. Check `pipeline_error` in Firestore/BigQuery to identify which stage failed
+2. Delete GCS checkpoints from the failed stage onward: `gsutil rm gs://<bucket>/processing/contracts/CNT-XXX/s4_extract.json` (and s5, s6 if needed)
+3. Clear `pipeline_status` in Firestore/BigQuery: `UPDATE contracts SET pipeline_status = NULL, pipeline_error = NULL WHERE contract_id = 'CNT-XXX'`
+4. Re-trigger via CLI or API — completed stages are skipped automatically via their existing checkpoints
+
 ---
 
 ### Checkpoint Helpers

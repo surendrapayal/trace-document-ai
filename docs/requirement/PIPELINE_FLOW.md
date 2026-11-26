@@ -691,15 +691,59 @@ Each stage is wrapped in `_with_retry()`. On transient failure, the stage is ret
 
 If all attempts fail, the exception propagates, `pipeline_status` is set to `dead_letter`, and a `pipeline.dead_lettered` audit event is written.
 
+### Manually resuming a failed pipeline
+
+There is no dedicated resume command. To resume a dead-lettered contract manually:
+
+**1. Find which stage failed** — check logs or the `pipeline_error` field in Firestore/BigQuery for the contract.
+
+**2. Delete checkpoints from the failed stage onward:**
+```bash
+# Example: failed at stage 4 (extraction) — delete s4 and everything after
+gsutil rm gs://<bucket>/processing/contracts/CNT-XXX/s4_extract.json
+gsutil rm gs://<bucket>/processing/contracts/CNT-XXX/s5_normalize.json
+gsutil rm gs://<bucket>/processing/contracts/CNT-XXX/s6_judge.json
+```
+Stages 1–3 still have their checkpoints — they will be skipped automatically on retry.
+
+**3. Clear the `dead_letter` status** so the idempotency guard allows re-entry:
+```sql
+-- BigQuery
+UPDATE contracts SET pipeline_status = NULL, pipeline_error = NULL
+WHERE contract_id = 'CNT-XXX'
+```
+Or update the document directly in the Firestore console.
+
+**4. Re-trigger:**
+```bash
+# Via CLI
+python -m trace_ai.pipeline --gcs-uri gs://<bucket>/raw/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
+
+# Via API (if PDF is still in landing/)
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-key" \
+  -d '{"files": ["contract.pdf"]}'
+```
+The pipeline will skip completed stages (checkpoints exist) and resume from the first missing checkpoint.
+
+---
+
 ### Forcing a full re-run
 
-To reprocess a contract from scratch (e.g. after fixing extraction logic), delete the checkpoints from GCS:
+To reprocess a contract from scratch (e.g. after fixing extraction logic), delete all checkpoints from GCS:
 
 ```bash
 gsutil -m rm gs://<bucket>/processing/contracts/CNT-XXX/s*.json
 ```
 
-Then re-trigger. The `pipeline_status` guard will also need to be cleared — either delete the contract record or set `pipeline_status` to `null` in Firestore/BigQuery.
+Then clear `pipeline_status` in Firestore/BigQuery:
+```sql
+-- BigQuery
+UPDATE contracts SET pipeline_status = NULL, pipeline_error = NULL
+WHERE contract_id = 'CNT-XXX'
+```
+
+Then re-trigger. All 7 stages will run from scratch.
 
 ### Configuration
 
