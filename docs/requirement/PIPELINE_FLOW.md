@@ -250,15 +250,48 @@ ExtractionResult
 | `DLP_LOCATION` | `global` | DLP API location. `global` works everywhere; use a specific region (e.g. `us-central1`) for data residency requirements |
 | `DLP_INSPECT_TEMPLATE_NAME` | `""` (inline) | Full resource name of a stored GCP inspect template. When set, overrides inline `info_types` and `min_likelihood` |
 | `DLP_DEIDENTIFY_TEMPLATE_NAME` | `""` (inline) | Full resource name of a stored GCP deidentify template. When set, overrides inline `CharacterMaskConfig` |
-| `DLP_MASK_CHARACTER` | `*` | Character used to replace masked spans |
-| `DLP_NUMBER_TO_MASK` | `0` | Number of characters to mask; `0` masks the entire matched span |
+| `DLP_MASK_CHARACTER` | `*` | Character used to replace masked spans (inline mode only) |
+| `DLP_NUMBER_TO_MASK` | `0` | Number of characters to mask; `0` masks the entire matched span (inline mode only) |
 | `DLP_MIN_LIKELIHOOD` | `LIKELY` | Minimum match confidence: `POSSIBLE_REGION`, `LIKELY`, `VERY_LIKELY` |
 
 **Template vs inline behaviour**:
 - If `DLP_INSPECT_TEMPLATE_NAME` is set, `inspect_config` is passed as `None` and `inspect_template_name` is used instead — the stored template controls info types and likelihood
-- If `DLP_DEIDENTIFY_TEMPLATE_NAME` is set, `deidentify_config` is passed as `None` and `deidentify_template_name` is used instead — the stored template controls masking transformation
+- If `DLP_DEIDENTIFY_TEMPLATE_NAME` is set, `deidentify_config` is passed as `None` and `deidentify_template_name` is used instead — the stored template controls all masking transformations
 - Both can be set independently; mixing (e.g. stored inspect + inline deidentify) is supported
 - Stored templates are managed in the GCP console or via the DLP API under `projects/<id>/locations/global/inspectTemplates/<id>` and `.../deidentifyTemplates/<id>`
+
+**Recommended approach — GCP deidentify template for per-type masking rules**:
+
+The inline `CharacterMaskConfig` applies the same masking rule to every PII type. To apply different rules per type (e.g. last 4 for SSN, first 4 for email, full label replacement for names), create a GCP deidentify template with one transformation per info type and set `DLP_DEIDENTIFY_TEMPLATE_NAME`.
+
+Masking rules by PII type:
+
+| PII Type | Strategy | Example |
+|---|---|---|
+| `US_SOCIAL_SECURITY_NUMBER` | Last 4 visible, skip `-` | `123-45-6789` → `***-**-6789` |
+| `US_BANK_ROUTING_MICR` | Last 4 visible | `021000021` → `*****0021` |
+| `FINANCIAL_ACCOUNT_NUMBER` | Last 4 visible | `1234567890` → `******7890` |
+| `PHONE_NUMBER` | Last 4 visible, skip `()- ` | `(555) 867-5309` → `(***) ***-5309` |
+| `US_DRIVERS_LICENSE_NUMBER` | Last 4 visible | `D1234567` → `****4567` |
+| `EMAIL_ADDRESS` | First 4 visible | `john.smith@heartland.com` → `john********************` |
+| `PERSON_NAME` | Replace with info type label | `John Smith` → `[PERSON_NAME]` |
+| `DATE_OF_BIRTH` | Replace with info type label | `01/15/1980` → `[DATE_OF_BIRTH]` |
+| `STREET_ADDRESS` | Replace with info type label | `123 Main St` → `[STREET_ADDRESS]` |
+
+Numbers use partial masking so the LLM Judge can verify the extraction matched the source (e.g. `****6789` confirms last 4 match). Names, DOB, and addresses are fully replaced with labels because even partial exposure is enough to re-identify someone.
+
+**Steps to create the deidentify template in GCP console**:
+1. Go to GCP Console → Security → Cloud DLP → Configuration → Templates → Create deidentify template
+2. Add one transformation per info type using the rules above:
+   - For last 4 / first 4: select `Character mask`, set `Number of characters to mask = 0`, set `Reverse order = true` (last N) or `false` (first N), add characters to ignore (e.g. `-` for SSN)
+   - For full replacement: select `Replace with info type`
+3. Copy the template resource name — format: `projects/<project-id>/locations/global/deidentifyTemplates/<template-id>`
+4. Set in `.env`:
+   ```
+   DLP_DEIDENTIFY_TEMPLATE_NAME=projects/<project-id>/locations/global/deidentifyTemplates/<template-id>
+   ```
+
+No code changes needed — `_deidentify_config()` already returns `None` when `DLP_DEIDENTIFY_TEMPLATE_NAME` is set, and the template name is passed directly to the Cloud DLP API.
 
 **Input**: `full_text: str` from Stage 1  
 **Output**: `(masked_text: str, pii_types: list[str])`

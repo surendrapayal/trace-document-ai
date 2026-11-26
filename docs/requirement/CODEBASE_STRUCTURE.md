@@ -168,7 +168,7 @@ Calls Document AI and Cloud DLP to extract and sanitize contract content.
 | File | Responsibility |
 |------|----------------|
 | `document_ai_client.py` | Submits PDF to Document AI Form Parser with `enable_native_pdf_parsing=True`. Handles both digital and scanned PDFs. Returns full text, key-value pairs, and tables. Caches result to `gs://<GCS_BUCKET>/processing/contracts/<id>/ocr.json` — skips Document AI on re-run. |
-| `dlp_client.py` | Calls Cloud DLP to detect and mask PII (SSN, DOB, routing numbers, etc.) before passing to Gemini. Caches result to `gs://<GCS_BUCKET>/processing/contracts/<id>/masked.json` — skips DLP on re-run. |
+| `dlp_client.py` | Calls Cloud DLP to detect and mask PII before passing to Gemini. Supports inline masking (global `CharacterMaskConfig`) or a GCP deidentify template (`DLP_DEIDENTIFY_TEMPLATE_NAME`) for per-type rules — last 4 visible for SSN/account/routing/phone/DL, first 4 visible for email, full label replacement for name/DOB/address. Caches result to `gs://<GCS_BUCKET>/processing/contracts/<id>/masked.json` — skips DLP on re-run. |
 | `extraction_models.py` | Pydantic models for OCR output — ExtractionResult, KeyValuePair, ExtractedTable. |
 
 GCP Services used: `Document AI`, `Cloud DLP`
@@ -413,6 +413,23 @@ DUPLICATE_CHECK_ENABLED=true
 
 # Max upload file size in MB -- default is 50
 MAX_FILE_SIZE_BYTES=50
+
+# DLP -- inline masking config (used when DLP_DEIDENTIFY_TEMPLATE_NAME is not set)
+DLP_ENABLED=true
+DLP_LOCATION=global
+DLP_MASK_CHARACTER=*
+DLP_NUMBER_TO_MASK=0
+DLP_MIN_LIKELIHOOD=LIKELY
+
+# DLP -- GCP stored templates (recommended for per-type masking rules)
+# When set, overrides inline config above
+# Deidentify template applies per-type rules:
+#   last 4 visible  → SSN, routing, account, phone, drivers license
+#   first 4 visible → email
+#   label replace   → person name, DOB, street address
+# Create in GCP Console → Security → Cloud DLP → Configuration → Templates
+DLP_INSPECT_TEMPLATE_NAME=
+DLP_DEIDENTIFY_TEMPLATE_NAME=
 
 # Pipeline retry -- max attempts per stage before dead-lettering (default: 3)
 # Set to 1 to disable retries
