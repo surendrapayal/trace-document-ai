@@ -46,7 +46,7 @@ async def trigger_pipeline(
         blobs, unknown = all_blobs, []
 
     if not blobs:
-        return {"accepted": [], "skipped": unknown, "count": 0, "message": "No PDFs found in landing zone."}
+        return {"accepted": [], "skipped": unknown, "count": 0, "messages": []}
 
     from trace_ai.ingestion.upload_handler import upload_contract_from_gcs
 
@@ -70,11 +70,11 @@ async def trigger_pipeline(
             skipped.append({"blob": blob, "reason": str(e)})
 
     ids = [a["contract_id"] for a in accepted]
-    ids_str = ids[0] if len(ids) == 1 else ", ".join(ids)
+    messages = [f"Poll GET /api/v1/contracts/{cid} for status." for cid in ids]
     log("Pipeline trigger complete", accepted=len(accepted), skipped=len(skipped), contract_ids=ids)
     return {
         "accepted": accepted,
         "skipped": skipped,
         "count": len(accepted),
-        "message": f"{len(accepted)} pipeline(s) started. Poll GET /api/v1/contracts/{ids_str} for status.",
+        "messages": messages,
     }
