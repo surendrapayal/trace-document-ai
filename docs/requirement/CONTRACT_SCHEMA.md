@@ -161,15 +161,15 @@ class BankingInformation(BaseModel):
 
 
 class ProcessorInfo(BaseModel):
-    processor_name: str                     # e.g. Heartland
-    sales_rep_name: Optional[str]           # e.g. Lukas Turner, Sterling Jackson
-    sales_rep_role: Optional[str]           # e.g. isRM - Inbound and Market, TM
-    sales_rep_phone: Optional[str]
+    processor_brand: str                    # e.g. Heartland, Global Payments
+    rep_name: Optional[str]                 # e.g. Lukas Turner, Sterling Jackson
+    rep_role: Optional[str]                 # e.g. SRM, RM, TM, FI - RM, isRM
+    rep_phone: Optional[str]                # Phone listed directly under rep's name
     mid: Optional[str]                      # Merchant ID e.g. 650000011273417
     atlas_token: Optional[str]              # e.g. 4685796
     sdr_name: Optional[str]                 # e.g. Julia Wallis
     affiliate_id: Optional[str]             # e.g. FSBFMAS
-    generated_on: Optional[str]             # Document generation date
+    referred_by: Optional[str]              # e.g. Kelly Firesheets
 
 
 class ContractRecord(BaseModel):
@@ -217,14 +217,15 @@ class ContractRecord(BaseModel):
 {
   "contract_id": "CNT-20240426-CHETSHOESLLC",
   "processor_info": {
-    "processor_name": "Heartland",
-    "sales_rep_name": "Lukas Turner",
-    "sales_rep_role": "isRM - Inbound and Market",
-    "sales_rep_phone": "(405) 266-9827",
+    "processor_brand": "Heartland",
+    "rep_name": "Lukas Turner",
+    "rep_role": "isRM",
+    "rep_phone": "(405) 266-9827",
     "mid": "650000011273417",
     "atlas_token": "4685796",
     "sdr_name": "Julia Wallis",
-    "generated_on": "04/26/2024"
+    "affiliate_id": null,
+    "referred_by": null
   },
   "company_information": {
     "legal_name": "Chet Shoes LLC",
@@ -394,13 +395,15 @@ class ContractRecord(BaseModel):
 {
   "contract_id": "CNT-20241031-FITCHBURGHISTORICAL",
   "processor_info": {
-    "processor_name": "Heartland",
-    "sales_rep_name": "Sterling Jackson",
-    "sales_rep_role": "TM",
-    "sales_rep_phone": "(617) 697-2899",
-    "affiliate_id": "FSBFMAS",
+    "processor_brand": "Heartland",
+    "rep_name": "Sterling Jackson",
+    "rep_role": "TM",
+    "rep_phone": "(617) 697-2899",
+    "mid": null,
     "atlas_token": "4802548",
-    "generated_on": "10/31/2024"
+    "sdr_name": null,
+    "affiliate_id": "FSBFMAS",
+    "referred_by": null
   },
   "company_information": {
     "legal_name": "Fitchburg Historical Society",

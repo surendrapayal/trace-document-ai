@@ -151,15 +151,15 @@ class BankingInformation(BaseModel):
 
 
 class ProcessorInfo(BaseModel):
-    processor_name: str
-    sales_rep_name: Optional[str] = None
-    sales_rep_role: Optional[str] = None
-    sales_rep_phone: Optional[str] = None
+    processor_brand: str
+    rep_name: Optional[str] = None
+    rep_role: Optional[str] = None
+    rep_phone: Optional[str] = None
     mid: Optional[str] = None
     atlas_token: Optional[str] = None
     sdr_name: Optional[str] = None
     affiliate_id: Optional[str] = None
-    generated_on: Optional[str] = None
+    referred_by: Optional[str] = None
 
 
 class ContractRecord(BaseModel):

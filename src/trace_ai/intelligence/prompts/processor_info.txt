@@ -4,22 +4,27 @@ Extract the PROCESSOR HEADER INFORMATION from the following Heartland contract t
 
 Return a JSON object with exactly these fields:
 {
-  "processor_name": "Heartland",
-  "sales_rep_name": "",
-  "sales_rep_role": "",
-  "sales_rep_phone": "",
+  "processor_brand": "",
+  "rep_name": "",
+  "rep_role": "",
+  "rep_phone": "",
   "mid": "",
   "atlas_token": "",
   "sdr_name": "",
   "affiliate_id": "",
-  "generated_on": ""
+  "referred_by": ""
 }
 
 Rules:
-- processor_name is always "Heartland" for these contracts
-- MID label in document is "MID:" — extract the number after it
-- atlas Token label is "atlas Token:" — extract the number after it
-- generated_on is found at the bottom of page 1: "Generated On: MM/DD/YYYY"
+- processor_brand: processor company name e.g. "Heartland", "Global Payments"
+- rep_name: full name of the sales rep / relationship manager listed in the top right header
+- rep_role: role code e.g. "SRM", "RM", "TM", "FI - RM", "isRM"
+- rep_phone: phone number listed directly under the rep's name
+- mid: number following "MID:" label
+- atlas_token: digits following "atlas Token:" label
+- sdr_name: SDR name if present — set to null if not present
+- affiliate_id: partner/affiliate code following "Affiliate ID:" — set to null if not present
+- referred_by: name following "Referred By:" — set to null if not present
 - Return null for any field not found
 
 CONTRACT TEXT:

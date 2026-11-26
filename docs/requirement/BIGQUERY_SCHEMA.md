@@ -62,29 +62,29 @@ Use `JSON_VALUE()` or `JSON_QUERY()` in SQL to extract fields.
 
 ```json
 {
-  "processor_name": "Heartland Payment Systems",
-  "sales_rep_name": "Jane Smith",
-  "sales_rep_role": "Sales Representative",
-  "sales_rep_phone": "555-000-0000",
+  "processor_brand": "Heartland",
+  "rep_name": "Jane Smith",
+  "rep_role": "RM",
+  "rep_phone": "555-000-0000",
   "mid": "123456789",
   "atlas_token": "ATL-XXXXX",
   "sdr_name": "John Doe",
   "affiliate_id": "AFF-001",
-  "generated_on": "2024-01-15"
+  "referred_by": null
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `processor_name` | string | Required — processor company name |
-| `sales_rep_name` | string\|null | Sales representative name |
-| `sales_rep_role` | string\|null | Role title |
-| `sales_rep_phone` | string\|null | Contact phone |
+| `processor_brand` | string | Required — processor company name |
+| `rep_name` | string\|null | Full name of the sales rep / relationship manager |
+| `rep_role` | string\|null | Role code e.g. SRM, RM, TM, FI - RM, isRM |
+| `rep_phone` | string\|null | Phone listed directly under the rep name |
 | `mid` | string\|null | Merchant ID |
 | `atlas_token` | string\|null | Atlas system token |
 | `sdr_name` | string\|null | SDR name |
 | `affiliate_id` | string\|null | Affiliate identifier |
-| `generated_on` | string\|null | Contract generation date |
+| `referred_by` | string\|null | Name following Referred By: |
 
 ---
 

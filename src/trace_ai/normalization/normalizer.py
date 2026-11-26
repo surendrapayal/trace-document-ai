@@ -69,7 +69,7 @@ def normalize(raw: dict, contract_id: str) -> ContractRecord:
 
     record = ContractRecord(
         contract_id=contract_id,
-        processor_info=ProcessorInfo(**raw.get("processor_info", {"processor_name": "Unknown"})),
+        processor_info=ProcessorInfo(**raw.get("processor_info", {"processor_brand": "Unknown"})),
         company_information=CompanyInformation(**raw["company_information"]),
         merchant_details=MerchantDetails(**raw.get("merchant_details", {})),
         credit_card_pricing=CreditCardPricing(

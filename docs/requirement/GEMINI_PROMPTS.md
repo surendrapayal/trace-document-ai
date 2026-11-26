@@ -211,22 +211,26 @@ Extract the PROCESSOR HEADER INFORMATION from the following Heartland contract t
 
 Return a JSON object with exactly these fields:
 {
-  "processor_name": "Heartland",   // Always "Heartland" for these contracts
-  "sales_rep_name": "",            // Name in top right header
-  "sales_rep_role": "",            // Role e.g. "isRM - Inbound and Market" or "TM"
-  "sales_rep_phone": "",           // Phone in header
+  "processor_brand": "",           // Processor company name e.g. "Heartland", "Global Payments"
+  "rep_name": "",                  // Full name of the sales rep / relationship manager
+  "rep_role": "",                  // Role code e.g. "SRM", "RM", "TM", "FI - RM", "isRM"
+  "rep_phone": "",                 // Phone listed directly under the rep's name
   "mid": "",                       // MID value e.g. "650000011273417"
   "atlas_token": "",               // atlas Token value e.g. "4685796"
   "sdr_name": "",                  // SDR name if present
-  "affiliate_id": "",              // Affiliate ID if present
-  "generated_on": ""               // Date from "Generated On:" footer e.g. "04/26/2024"
+  "affiliate_id": "",              // Partner/affiliate code following "Affiliate ID:"
+  "referred_by": ""               // Name following "Referred By:"
 }
 
 Rules:
-- processor_name is always "Heartland" for these contracts
+- processor_brand: processor company name e.g. "Heartland", "Global Payments"
+- rep_name: full name of the sales rep / relationship manager in the top right header
+- rep_role: role code e.g. "SRM", "RM", "TM", "FI - RM", "isRM"
+- rep_phone: phone number listed directly under the rep's name
 - MID label in document is "MID:" — extract the number after it
 - atlas Token label is "atlas Token:" — extract the number after it
-- generated_on is found at the bottom of page 1: "Generated On: MM/DD/YYYY"
+- affiliate_id: partner/affiliate code following "Affiliate ID:" — set to null if not present
+- referred_by: name following "Referred By:" — set to null if not present
 - Return null for any field not found
 
 CONTRACT TEXT:
