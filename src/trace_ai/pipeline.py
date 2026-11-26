@@ -44,12 +44,14 @@ from trace_ai.delivery.webhook_client import send as webhook_send
 
 def run_ocr(gcs_uri: str, contract_id: str) -> dict:
     set_context(stage="extraction")
+    log("OCR stage started", contract_id=contract_id, gcs_uri=gcs_uri)
     write_audit_event(contract_id, "extraction", "document_ai_started")
     result, cache_hit = process_document_cached(gcs_uri, contract_id)
     write_audit_event(contract_id, "extraction", "document_ai_complete", {
         "page_count": result.page_count,
         "cache_hit": cache_hit,
     })
+    log("OCR stage completed", contract_id=contract_id, page_count=result.page_count, cache_hit=cache_hit)
     return {
         "full_text": result.full_text,
         "key_value_pairs": [kv.model_dump() for kv in result.key_value_pairs],
@@ -60,42 +62,51 @@ def run_ocr(gcs_uri: str, contract_id: str) -> dict:
 
 def run_dlp(full_text: str, contract_id: str) -> dict:
     set_context(stage="extraction")
+    log("DLP stage started", contract_id=contract_id)
     write_audit_event(contract_id, "extraction", "dlp_started")
     (masked_text, pii_types), cache_hit = mask_pii_cached(full_text, contract_id)
     write_audit_event(contract_id, "extraction", "dlp_complete", {
         "pii_types": pii_types,
         "cache_hit": cache_hit,
     })
+    log("DLP stage completed", contract_id=contract_id, pii_types=pii_types, cache_hit=cache_hit)
     return {"masked_text": masked_text, "pii_types": pii_types}
 
 
 def run_rag(masked_text: str, contract_id: str) -> dict:
     set_context(stage="intelligence")
+    log("RAG stage started", contract_id=contract_id)
     write_audit_event(contract_id, "intelligence", "rag_query_started")
     rag_context = rag_query(masked_text, contract_id)
     write_audit_event(contract_id, "intelligence", "rag_query_complete")
+    log("RAG stage completed", contract_id=contract_id)
     return {"rag_context": rag_context}
 
 
 def run_extract(masked_text: str, rag_context: str, contract_id: str) -> dict:
     set_context(stage="intelligence")
+    log("Extraction stage started", contract_id=contract_id)
     write_audit_event(contract_id, "intelligence", "gemini_extraction_started")
     raw_extracted = extract_all(masked_text, rag_context, contract_id)
     write_audit_event(contract_id, "intelligence", "gemini_extraction_complete")
+    log("Extraction stage completed", contract_id=contract_id)
     return raw_extracted
 
 
 def run_normalize(raw_extracted: dict, contract_id: str) -> dict:
     set_context(stage="normalization")
+    log("Normalization stage started", contract_id=contract_id)
     write_audit_event(contract_id, "normalization", "normalization_started")
     raw_extracted["contract_id"] = contract_id
     contract_record = normalize(raw_extracted, contract_id)
     write_audit_event(contract_id, "normalization", "normalization_complete")
+    log("Normalization stage completed", contract_id=contract_id)
     return json.loads(contract_record.model_dump_json())
 
 
 def run_judge(masked_text: str, contract_record_dict: dict, contract_id: str) -> dict:
     set_context(stage="validation")
+    log("Judge stage started", contract_id=contract_id)
     write_audit_event(contract_id, "validation", "llm_judge_started")
     contract_record = ContractRecord(**contract_record_dict)
     validation_result = evaluate(
@@ -110,6 +121,7 @@ def run_judge(masked_text: str, contract_record_dict: dict, contract_id: str) ->
         "issues": validation_result.issues,
         "critical_failures": validation_result.critical_failures,
     })
+    log("Judge stage completed", contract_id=contract_id, verdict=extraction_status, confidence_score=validation_result.overall_confidence)
     return {
         "overall_confidence": validation_result.overall_confidence,
         "verdict": extraction_status,
@@ -121,6 +133,7 @@ def run_judge(masked_text: str, contract_record_dict: dict, contract_id: str) ->
 
 def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str) -> dict:
     set_context(stage="delivery")
+    log("Delivery stage started", contract_id=contract_id)
     contract_record = ContractRecord(**contract_record_dict)
     extraction_status = judge_result["verdict"]
     contract_record.confidence_score = judge_result["overall_confidence"]
@@ -143,13 +156,15 @@ def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str
 
     upsert_contract(contract_record, curated_uri)
 
-    return {
+    result = {
         "contract_id": contract_id,
         "extraction_status": extraction_status,
         "confidence_score": judge_result["overall_confidence"],
         "curated_gcs_uri": curated_uri,
         "issues": judge_result["issues"],
     }
+    log("Delivery stage completed", contract_id=contract_id, extraction_status=extraction_status, confidence_score=judge_result["overall_confidence"])
+    return result
 
 
 # ── Full pipeline ─────────────────────────────────────────────────────────────

@@ -13,8 +13,10 @@ class TriggerRequest(BaseModel):
 
 def _run_pipeline(gcs_uri: str, contract_id: str, file_hash: str | None) -> None:
     from trace_ai.pipeline import run
+    log("Pipeline started", contract_id=contract_id, gcs_uri=gcs_uri)
     try:
         run(gcs_uri, contract_id, file_hash)
+        log("Pipeline completed", contract_id=contract_id)
     except Exception as e:
         log("Background pipeline failed", severity="ERROR", contract_id=contract_id, error=str(e))
 
@@ -69,6 +71,7 @@ async def trigger_pipeline(
 
     ids = [a["contract_id"] for a in accepted]
     ids_str = ids[0] if len(ids) == 1 else ", ".join(ids)
+    log("Pipeline trigger complete", accepted=len(accepted), skipped=len(skipped), contract_ids=ids)
     return {
         "accepted": accepted,
         "skipped": skipped,
