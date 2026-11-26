@@ -25,6 +25,7 @@ import argparse
 import json
 import sys
 
+from trace_ai.config import config
 from trace_ai.common.logger import log, set_context, clear_context
 from trace_ai.extraction.document_ai_client import process_document_cached
 from trace_ai.extraction.dlp_client import mask_pii_cached
@@ -331,6 +332,7 @@ def main():
     # ── Resolve contract_id and gcs_uri ──
     contract_id = args.contract_id
     gcs_uri = args.gcs_uri
+    file_hash = None
 
     # GCS folder — run full pipeline for every PDF under the prefix
     if args.gcs_uri and args.gcs_uri.endswith("/") and not args.stage:
