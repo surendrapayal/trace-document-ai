@@ -87,6 +87,7 @@ def normalize(raw: dict, contract_id: str) -> ContractRecord:
         owners_officers=owners,
         banking_information=banking,
         extracted_at=datetime.now(timezone.utc).isoformat(),
+    )
 
     log("Normalization complete", billing_model=str(record.credit_card_pricing.billing_model), owners_count=len(record.owners_officers))
     return record
