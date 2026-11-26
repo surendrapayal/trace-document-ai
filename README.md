@@ -147,7 +147,7 @@ curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
   -H "X-API-Key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"files": ["contract.pdf"]}'
-# Response includes contract_id(s) to poll for status
+# Response includes messages[] array with one poll URL per accepted contract
 
 # 4. Poll for result
 curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A1B2C3D4E5F6
@@ -306,7 +306,7 @@ curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Rev
 
 | Endpoint | Description |
 |---|---|
-| `POST /api/v1/pipeline/trigger` | Scan `landing/` zone and start pipeline -- all PDFs or specific `files[]` |
+| `POST /api/v1/pipeline/trigger` | Scan `landing/` zone and start pipeline -- all PDFs or specific `files[]`. Returns `messages[]` array with one poll URL per contract |
 | `GET /api/v1/contracts/{contract_id}` | Fetch a single contract by ID |
 | `GET /api/v1/contracts?status=...` | List contracts by status |
 | `GET /api/v1/contracts/status/stats` | Breakdown of contracts by status |

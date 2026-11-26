@@ -140,7 +140,7 @@ Shared utilities used across all modules.
 
 | File | Responsibility |
 |------|----------------|
-| `gcs_client.py` | Shared helper for GCS upload, download, upload_json, download_json, blob_exists, list_blobs, copy_blob, move_blob, delete_blob across all zones. |
+| `gcs_client.py` | Shared helper for GCS upload, download, upload_json, download_json, blob_exists, list_blobs, copy_blob, move_blob, delete_blob across all zones. `copy_blob()` uses `source_bucket.copy_blob()` (not `client.copy_blob()`). `move_blob()` = copy + delete. |
 | `logger.py` | Structured JSON logger with MDC context (`contextvars`). Emits one JSON line per log call to stdout always, and optionally to a rotating file when `LOG_TO_FILE=true`. No GCP dependency. |
 
 GCP Services used: `GCS`
@@ -271,7 +271,7 @@ FastAPI + Jinja2 web application for human-in-the-loop (HITL) contract review. D
 | `routes/review.py` | `GET /review/{id}` -- renders contract detail. `POST /review/{id}` -- records approve/reject decision, writes to GCS if approved, triggers webhook. |
 | `routes/decisions.py` | `GET /approved` -- lists all approved contracts. `GET /rejected` -- lists all rejected contracts. Both render decisions.html. |
 | `routes/contracts.py` | `GET /api/v1/contracts/{id}` -- fetch single contract as JSON. `GET /api/v1/contracts?status=...` -- list contracts by status. `GET /api/v1/contracts/status/stats` -- breakdown by status. Auth via `X-API-Key` when `REST_API_KEY` is set. |
-| `routes/pipeline.py` | `POST /api/v1/pipeline/trigger` -- scans `landing/` zone for PDFs, moves each to `raw/`, fires pipeline per contract as a background task. Returns 202 with list of accepted contract IDs. Auth via `X-API-Key` when `REST_API_KEY` is set. |
+| `routes/pipeline.py` | `POST /api/v1/pipeline/trigger` -- scans `landing/` zone for PDFs (or specific `files[]`), moves each to `raw/`, fires pipeline per contract as a background task. Returns 202 with `accepted[]`, `skipped[]`, and `messages[]` (one poll URL per accepted contract). Auth via `X-API-Key` when `REST_API_KEY` is set. |
 | `templates/queue.html` | Reviewer queue UI -- lists pending contracts with confidence score badges. |
 | `templates/review.html` | Contract detail UI -- all sections displayed, approve/reject form at bottom. |
 | `templates/decisions.html` | Shared template for approved and rejected contract lists -- shows reviewer, notes, reviewed_at. |

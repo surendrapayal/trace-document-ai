@@ -339,7 +339,9 @@ curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
   ],
   "skipped": [],
   "count": 1,
-  "message": "1 pipeline(s) started. Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
+  "messages": [
+    "Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
+  ]
 }
 ```
 
@@ -349,7 +351,23 @@ curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
   "accepted": [],
   "skipped": [],
   "count": 0,
-  "message": "No PDFs found in landing zone."
+  "messages": []
+}
+```
+
+**Response** `202 Accepted` -- multiple PDFs accepted:
+```json
+{
+  "accepted": [
+    {"contract_id": "CNT-A1B2C3D4E5F6", "gcs_uri": "gs://..."},
+    {"contract_id": "CNT-B2C3D4E5F6A1", "gcs_uri": "gs://..."}
+  ],
+  "skipped": [],
+  "count": 2,
+  "messages": [
+    "Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status.",
+    "Poll GET /api/v1/contracts/CNT-B2C3D4E5F6A1 for status."
+  ]
 }
 ```
 
@@ -362,7 +380,9 @@ curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
     {"blob": "landing/missing.pdf", "reason": "Not found in landing zone"}
   ],
   "count": 1,
-  "message": "1 pipeline(s) started. Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
+  "messages": [
+    "Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
+  ]
 }
 ```
 

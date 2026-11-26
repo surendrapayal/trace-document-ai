@@ -59,9 +59,11 @@ Each import brings in exactly one function from each stage module. `rag_query` i
 
 ```python
 def run_ocr(gcs_uri: str, contract_id: str) -> dict:
+    set_context(stage="extraction")
+    log("OCR stage started", contract_id=contract_id, gcs_uri=gcs_uri)
     write_audit_event(contract_id, "extraction", "document_ai_started")
 ```
-Writes an audit event to Firestore/BigQuery before the stage begins — every stage is bookended by audit events so the full pipeline timeline is traceable.
+Logs stage start and writes an audit event before the stage begins — every stage is bookended by both log lines and audit events so the full pipeline timeline is traceable in both the log stream and the audit store.
 
 ```python
     result, cache_hit = process_document_cached(gcs_uri, contract_id)
@@ -73,8 +75,9 @@ Calls `process_document_cached()` which first checks whether `processing/contrac
         "page_count": result.page_count,
         "cache_hit": cache_hit,
     })
+    log("OCR stage completed", contract_id=contract_id, page_count=result.page_count, cache_hit=cache_hit)
 ```
-Writes the completion audit event including `page_count` and `cache_hit` — so the audit trail shows whether Document AI was actually called or the cached result was used.
+Writes the completion audit event and log line including `page_count` and `cache_hit` — so both the log stream and audit trail show whether Document AI was actually called or the cached result was used.
 
 ```python
     return {
@@ -92,12 +95,15 @@ Converts the Pydantic `ExtractionResult` to a plain dict so it can be serialized
 
 ```python
 def run_dlp(full_text: str, contract_id: str) -> dict:
+    set_context(stage="extraction")
+    log("DLP stage started", contract_id=contract_id)
     write_audit_event(contract_id, "extraction", "dlp_started")
     (masked_text, pii_types), cache_hit = mask_pii_cached(full_text, contract_id)
     write_audit_event(contract_id, "extraction", "dlp_complete", {
         "pii_types": pii_types,
         "cache_hit": cache_hit,
     })
+    log("DLP stage completed", contract_id=contract_id, pii_types=pii_types, cache_hit=cache_hit)
     return {"masked_text": masked_text, "pii_types": pii_types}
 ```
 `mask_pii_cached()` first checks whether `processing/contracts/<contract_id>/masked.json` already exists in GCS. If it does, the masked text and PII types are loaded from GCS and Cloud DLP is not called. If not, DLP is called and the result is written to GCS. Returns `((masked_text, pii_types), cache_hit: bool)`. The `cache_hit` flag is recorded in the audit event. `masked_text` is what every downstream stage (RAG, Gemini, LLM Judge) receives — raw PII never reaches an LLM. The `masked.json` file in GCS is also a durable compliance artifact proving PII was removed before any LLM call.
@@ -108,9 +114,12 @@ def run_dlp(full_text: str, contract_id: str) -> dict:
 
 ```python
 def run_rag(masked_text: str, contract_id: str) -> dict:
+    set_context(stage="intelligence")
+    log("RAG stage started", contract_id=contract_id)
     write_audit_event(contract_id, "intelligence", "rag_query_started")
     rag_context = rag_query(masked_text, contract_id)
     write_audit_event(contract_id, "intelligence", "rag_query_complete")
+    log("RAG stage completed", contract_id=contract_id)
     return {"rag_context": rag_context}
 ```
 Passes `masked_text` to `rag_client.query()` which embeds the text, queries Vector Search, and fetches matching KB chunks. Returns `rag_context` — a single string of concatenated knowledge base chunks that will be injected into every Gemini prompt.
@@ -121,9 +130,12 @@ Passes `masked_text` to `rag_client.query()` which embeds the text, queries Vect
 
 ```python
 def run_extract(masked_text: str, rag_context: str, contract_id: str) -> dict:
+    set_context(stage="intelligence")
+    log("Extraction stage started", contract_id=contract_id)
     write_audit_event(contract_id, "intelligence", "gemini_extraction_started")
     raw_extracted = extract_all(masked_text, rag_context, contract_id)
     write_audit_event(contract_id, "intelligence", "gemini_extraction_complete")
+    log("Extraction stage completed", contract_id=contract_id)
     return raw_extracted
 ```
 Passes both `masked_text` and `rag_context` to `gemini_client.extract_all()` which runs 7 sequential Gemini prompt calls. Returns `raw_extracted` — a dict with 7 keys, one per contract section. This dict is returned directly as the stage output.
@@ -134,6 +146,8 @@ Passes both `masked_text` and `rag_context` to `gemini_client.extract_all()` whi
 
 ```python
 def run_normalize(raw_extracted: dict, contract_id: str) -> dict:
+    set_context(stage="normalization")
+    log("Normalization stage started", contract_id=contract_id)
     write_audit_event(contract_id, "normalization", "normalization_started")
     raw_extracted["contract_id"] = contract_id
 ```
@@ -142,6 +156,7 @@ Injects `contract_id` into the raw dict before passing to the normalizer — the
 ```python
     contract_record = normalize(raw_extracted, contract_id)
     write_audit_event(contract_id, "normalization", "normalization_complete")
+    log("Normalization stage completed", contract_id=contract_id)
     return json.loads(contract_record.model_dump_json())
 ```
 `normalize()` maps the raw Gemini dict to a fully-typed `ContractRecord` Pydantic model. `model_dump_json()` serializes it to a JSON string, then `json.loads()` converts it back to a plain dict — this round-trip ensures all Pydantic types (enums, datetimes) are serialized to their string representations before being passed between stages.
@@ -152,6 +167,8 @@ Injects `contract_id` into the raw dict before passing to the normalizer — the
 
 ```python
 def run_judge(masked_text: str, contract_record_dict: dict, contract_id: str) -> dict:
+    set_context(stage="validation")
+    log("Judge stage started", contract_id=contract_id)
     write_audit_event(contract_id, "validation", "llm_judge_started")
     contract_record = ContractRecord(**contract_record_dict)
 ```
@@ -178,15 +195,10 @@ Calls `confidence_scorer.route()` which applies threshold logic to `validation_r
         "issues": validation_result.issues,
         "critical_failures": validation_result.critical_failures,
     })
-    return {
-        "overall_confidence": validation_result.overall_confidence,
-        "verdict": extraction_status,
-        "field_scores": validation_result.field_scores.model_dump(),
-        "issues": validation_result.issues,
-        "critical_failures": validation_result.critical_failures,
-    }
+    log("Judge stage completed", contract_id=contract_id, verdict=extraction_status, confidence_score=validation_result.overall_confidence)
+    return { ... }
 ```
-Audit event captures the full judge result. Return dict includes per-section `field_scores` (serialized via `model_dump()`), the list of `issues` (non-critical discrepancies), and `critical_failures` (fields that failed completely).
+Audit event and log line both capture the full judge result including `verdict` and `confidence_score`. Return dict includes per-section `field_scores`, `issues`, and `critical_failures`.
 
 ---
 
@@ -194,6 +206,8 @@ Audit event captures the full judge result. Return dict includes per-section `fi
 
 ```python
 def run_deliver(contract_record_dict: dict, judge_result: dict, contract_id: str) -> dict:
+    set_context(stage="delivery")
+    log("Delivery stage started", contract_id=contract_id)
     contract_record = ContractRecord(**contract_record_dict)
     extraction_status = judge_result["verdict"]
     contract_record.confidence_score = judge_result["overall_confidence"]
@@ -225,19 +239,10 @@ Three routing branches. Only `APPROVED` triggers a GCS write -- `curated_uri` st
 
 ```python
     upsert_contract(contract_record, curated_uri)
+    log("Delivery stage completed", contract_id=contract_id, extraction_status=extraction_status, confidence_score=judge_result["overall_confidence"])
+    return { ... }
 ```
-Called for ALL statuses — every contract is written to the operational store (Firestore or BigQuery) regardless of outcome. This is what populates the review queue for `"Review Required"` contracts.
-
-```python
-    return {
-        "contract_id": contract_id,
-        "extraction_status": extraction_status,
-        "confidence_score": judge_result["overall_confidence"],
-        "curated_gcs_uri": curated_uri,
-        "issues": judge_result["issues"],
-    }
-```
-Final pipeline output. `curated_gcs_uri` is `None` for non-approved contracts.
+Called for ALL statuses — every contract is written to the operational store regardless of outcome. The delivery completed log captures the final `extraction_status` and `confidence_score`. `curated_gcs_uri` is `None` for non-approved contracts.
 
 ---
 
