@@ -9,21 +9,45 @@ Return a JSON object with exactly these fields:
   "tax_id": "",
   "services": "",
   "card_acceptance": "",
-  "statement_type": "",
-  "new_existing_business": "",
+  "statement_type_mailing": "",
+  "new_or_existing_business": "",
   "length_in_business": "",
   "number_of_terminals": null,
   "deposit_method": "",
   "dispute_letter_mailing": "",
   "dispute_letter_electronic": "",
-  "pci_compliant": null
+  "language_preference": "",
+  "tax_id_is_signer_ssn": "",
+  "home_based_business": "",
+  "bankruptcy_status": "",
+  "site_inspected": "",
+  "business_signage_present": "",
+  "inventory_sufficient": "",
+  "use_fulfillment_house": "",
+  "additional_locations": "",
+  "partner_referral_info": "",
+  "pci_compliant": "",
+  "pci_dss_maintained": "",
+  "notify_pos_changes": "",
+  "third_party_gateway": "",
+  "qir_utilized": "",
+  "stores_sensitive_auth_data": "",
+  "emv_terminal_utilized": "",
+  "pep_official_status": "",
+  "data_compromise_pci_investigation": "",
+  "third_party_lender_contract": "",
+  "data_storage_entity_cardholder_data_access": "",
+  "provides_card_data_services_for_companies": "",
+  "payment_facilitator_service_provider": ""
 }
 
 Rules:
-- pci_compliant: "Yes" -> true, "No" -> false
-- number_of_terminals: extract as integer
-- Return null for any field not found
-- Do not extract the compliance Yes/No questions — only the structured fields above
+- number_of_terminals: extract as integer — set to null if not present
+- statement_type_mailing: e.g. "Standard/DBA" — set to null if not present
+- new_or_existing_business: e.g. "Open-New to Card", "Switching to Heartland"
+- All Yes/No fields: extract the value as "Yes" or "No" exactly as stated — set to null if not present
+- language_preference: e.g. "English", "Spanish" — set to null if not present
+- Return null for any field not found — do not guess
 
 CONTRACT TEXT:
 {contract_text}

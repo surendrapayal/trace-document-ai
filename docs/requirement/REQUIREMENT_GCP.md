@@ -210,7 +210,7 @@ All contract documents are normalized into a common Pydantic schema — `Contrac
 |---------|-------|------------|
 | Identity | `ProcessorInfo` | processor_brand, rep_name, rep_role, mid, atlas_token, referred_by |
 | Company | `CompanyInformation` | legal_name, legal_address, dba_name, primary_contact, HIC admin |
-| Merchant | `MerchantDetails` | business_type, ownership_type, tax_id, PCI compliance |
+| Merchant | `MerchantDetails` | business_type, ownership_type, tax_id, pci_compliant, language_preference |
 | Pricing | `CreditCardPricing` | billing_model, card_rates, recurring_fees, Amex details |
 | Processing | `ProcessingDetails` | card_swiped_pct, face_to_face_pct, website flag |
 | Owners | `List[OwnerOfficer]` | name, title, ownership_pct, DOB, SSN last 4, DL last 4 |

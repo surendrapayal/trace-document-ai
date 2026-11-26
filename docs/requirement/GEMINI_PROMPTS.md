@@ -123,47 +123,68 @@ RAG CONTEXT:
 
 ---
 
-## Prompt 3 — Merchant Details Extraction
+## Prompt 3 - Merchant Details Extraction
 
 **File:** `intelligence/prompts/merchant_details.txt`
 
-```
+`
 You are a contract data extraction specialist for merchant processing agreements.
 
 Extract the MERCHANT DETAILS section from the following Heartland contract text.
 
 Return a JSON object with exactly these fields:
 {
-  "business_type": "",             // e.g. "Private"
-  "ownership_type": "",            // e.g. "LLC Corporation" or "Tax Exempt"
-  "tax_id": "",                    // Federal EIN e.g. "84-3846372"
-  "services": "",                  // Business category e.g. "Shoes-Retail"
-  "card_acceptance": "",           // e.g. "All Cards Accepted"
-  "statement_type": "",            // e.g. "Standard / DBA"
-  "new_existing_business": "",     // e.g. "Open-New to Card" or "Switching to Heartland"
-  "length_in_business": "",        // e.g. "< 1 year" or "> 15 years"
-  "number_of_terminals": null,     // integer
-  "deposit_method": "",            // e.g. "Standard"
-  "dispute_letter_mailing": "",    // e.g. "DBA"
-  "dispute_letter_electronic": "", // e.g. "Email"
-  "pci_compliant": null            // boolean — true if "Yes", false if "No"
+  "business_type": "",
+  "ownership_type": "",
+  "tax_id": "",
+  "services": "",
+  "card_acceptance": "",
+  "statement_type_mailing": "",
+  "new_or_existing_business": "",
+  "length_in_business": "",
+  "number_of_terminals": null,
+  "deposit_method": "",
+  "dispute_letter_mailing": "",
+  "dispute_letter_electronic": "",
+  "language_preference": "",
+  "tax_id_is_signer_ssn": "",
+  "home_based_business": "",
+  "bankruptcy_status": "",
+  "site_inspected": "",
+  "business_signage_present": "",
+  "inventory_sufficient": "",
+  "use_fulfillment_house": "",
+  "additional_locations": "",
+  "partner_referral_info": "",
+  "pci_compliant": "",
+  "pci_dss_maintained": "",
+  "notify_pos_changes": "",
+  "third_party_gateway": "",
+  "qir_utilized": "",
+  "stores_sensitive_auth_data": "",
+  "emv_terminal_utilized": "",
+  "pep_official_status": "",
+  "data_compromise_pci_investigation": "",
+  "third_party_lender_contract": "",
+  "data_storage_entity_cardholder_data_access": "",
+  "provides_card_data_services_for_companies": "",
+  "payment_facilitator_service_provider": ""
 }
 
 Rules:
-- pci_compliant: "Yes" → true, "No" → false
-- number_of_terminals: extract as integer
-- Return null for any field not found
-- Do not extract the compliance Yes/No questions — only the structured fields above
+- number_of_terminals: extract as integer - set to null if not present
+- All Yes/No fields: extract as "Yes" or "No" exactly as stated - set to null if not present
+- language_preference: e.g. "English", "Spanish" - set to null if not present
+- Return null for any field not found - do not guess
 
 CONTRACT TEXT:
 {contract_text}
 
 RAG CONTEXT:
 {rag_context}
-```
+`
 
 ---
-
 ## Prompt 4 — Processing Details Extraction
 
 **File:** `intelligence/prompts/processing_details.txt`

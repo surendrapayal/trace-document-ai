@@ -83,14 +83,36 @@ class MerchantDetails(BaseModel):
     tax_id: Optional[str] = None
     services: Optional[str] = None
     card_acceptance: Optional[str] = None
-    statement_type: Optional[str] = None
-    new_existing_business: Optional[str] = None
+    statement_type_mailing: Optional[str] = None
+    new_or_existing_business: Optional[str] = None
     length_in_business: Optional[str] = None
     number_of_terminals: Optional[int] = None
     deposit_method: Optional[str] = None
     dispute_letter_mailing: Optional[str] = None
     dispute_letter_electronic: Optional[str] = None
-    pci_compliant: Optional[bool] = None
+    language_preference: Optional[str] = None
+    tax_id_is_signer_ssn: Optional[str] = None
+    home_based_business: Optional[str] = None
+    bankruptcy_status: Optional[str] = None
+    site_inspected: Optional[str] = None
+    business_signage_present: Optional[str] = None
+    inventory_sufficient: Optional[str] = None
+    use_fulfillment_house: Optional[str] = None
+    additional_locations: Optional[str] = None
+    partner_referral_info: Optional[str] = None
+    pci_compliant: Optional[str] = None
+    pci_dss_maintained: Optional[str] = None
+    notify_pos_changes: Optional[str] = None
+    third_party_gateway: Optional[str] = None
+    qir_utilized: Optional[str] = None
+    stores_sensitive_auth_data: Optional[str] = None
+    emv_terminal_utilized: Optional[str] = None
+    pep_official_status: Optional[str] = None
+    data_compromise_pci_investigation: Optional[str] = None
+    third_party_lender_contract: Optional[str] = None
+    data_storage_entity_cardholder_data_access: Optional[str] = None
+    provides_card_data_services_for_companies: Optional[str] = None
+    payment_facilitator_service_provider: Optional[str] = None
 
 
 class ProcessingDetails(BaseModel):

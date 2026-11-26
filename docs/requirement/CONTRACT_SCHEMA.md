@@ -93,14 +93,36 @@ class MerchantDetails(BaseModel):
     tax_id: Optional[str]                   # e.g. 84-3846372
     services: Optional[str]                 # e.g. Shoes-Retail, Historical Organizations
     card_acceptance: Optional[str]          # e.g. All Cards Accepted
-    statement_type: Optional[str]           # e.g. Standard / DBA
-    new_existing_business: Optional[str]    # e.g. Open-New to Card, Switching to Heartland
+    statement_type_mailing: Optional[str]   # e.g. Standard/DBA
+    new_or_existing_business: Optional[str] # e.g. Open-New to Card, Switching to Heartland
     length_in_business: Optional[str]       # e.g. < 1 year, > 15 years
     number_of_terminals: Optional[int]
     deposit_method: Optional[str]           # e.g. Standard
     dispute_letter_mailing: Optional[str]   # e.g. DBA
     dispute_letter_electronic: Optional[str]# e.g. Email
-    pci_compliant: Optional[bool]
+    language_preference: Optional[str]      # e.g. English
+    tax_id_is_signer_ssn: Optional[str]     # Yes / No
+    home_based_business: Optional[str]      # Yes / No
+    bankruptcy_status: Optional[str]        # Yes / No
+    site_inspected: Optional[str]           # Yes / No
+    business_signage_present: Optional[str] # Yes / No
+    inventory_sufficient: Optional[str]     # Yes / No
+    use_fulfillment_house: Optional[str]    # Yes / No
+    additional_locations: Optional[str]     # Yes / No
+    partner_referral_info: Optional[str]    # Yes / No
+    pci_compliant: Optional[str]            # Yes / No
+    pci_dss_maintained: Optional[str]       # Yes / No
+    notify_pos_changes: Optional[str]       # Yes / No
+    third_party_gateway: Optional[str]      # Yes / No
+    qir_utilized: Optional[str]             # Yes / No
+    stores_sensitive_auth_data: Optional[str]              # Yes / No
+    emv_terminal_utilized: Optional[str]    # Yes / No
+    pep_official_status: Optional[str]      # Yes / No
+    data_compromise_pci_investigation: Optional[str]       # Yes / No
+    third_party_lender_contract: Optional[str]             # Yes / No
+    data_storage_entity_cardholder_data_access: Optional[str]         # Yes / No
+    provides_card_data_services_for_companies: Optional[str]          # Yes / No
+    payment_facilitator_service_provider: Optional[str]               # Yes / No
 
 
 class ProcessingDetails(BaseModel):
@@ -250,11 +272,36 @@ class ContractRecord(BaseModel):
     "tax_id": "84-3846372",
     "services": "Shoes-Retail",
     "card_acceptance": "All Cards Accepted",
-    "new_existing_business": "Open-New to Card",
+    "statement_type_mailing": "Standard/DBA",
+    "new_or_existing_business": "Open-New to Card",
     "length_in_business": "< 1 year",
     "number_of_terminals": 1,
     "deposit_method": "Standard",
-    "pci_compliant": true
+    "dispute_letter_mailing": "DBA",
+    "dispute_letter_electronic": "Email",
+    "language_preference": "English",
+    "tax_id_is_signer_ssn": "No",
+    "home_based_business": "No",
+    "bankruptcy_status": "No",
+    "site_inspected": "No",
+    "business_signage_present": "Yes",
+    "inventory_sufficient": "Yes",
+    "use_fulfillment_house": "No",
+    "additional_locations": "No",
+    "partner_referral_info": "No",
+    "pci_compliant": "Yes",
+    "pci_dss_maintained": "Yes",
+    "notify_pos_changes": "Yes",
+    "third_party_gateway": "No",
+    "qir_utilized": "Yes",
+    "stores_sensitive_auth_data": "No",
+    "emv_terminal_utilized": "Yes",
+    "pep_official_status": "No",
+    "data_compromise_pci_investigation": "No",
+    "third_party_lender_contract": "No",
+    "data_storage_entity_cardholder_data_access": "No",
+    "provides_card_data_services_for_companies": "No",
+    "payment_facilitator_service_provider": "No"
   },
   "credit_card_pricing": {
     "annual_volume": "$800,000.00",
@@ -428,11 +475,36 @@ class ContractRecord(BaseModel):
     "tax_id": "04-6060118",
     "services": "Historical Organizations",
     "card_acceptance": "All Cards Accepted",
-    "new_existing_business": "Switching to Heartland",
+    "statement_type_mailing": null,
+    "new_or_existing_business": "Switching to Heartland",
     "length_in_business": "> 15 years",
     "number_of_terminals": 1,
     "deposit_method": "Standard",
-    "pci_compliant": true
+    "dispute_letter_mailing": null,
+    "dispute_letter_electronic": null,
+    "language_preference": "English",
+    "tax_id_is_signer_ssn": "No",
+    "home_based_business": "No",
+    "bankruptcy_status": "No",
+    "site_inspected": "No",
+    "business_signage_present": "Yes",
+    "inventory_sufficient": "Yes",
+    "use_fulfillment_house": "No",
+    "additional_locations": "No",
+    "partner_referral_info": "No",
+    "pci_compliant": "Yes",
+    "pci_dss_maintained": "Yes",
+    "notify_pos_changes": "Yes",
+    "third_party_gateway": "No",
+    "qir_utilized": "Yes",
+    "stores_sensitive_auth_data": "No",
+    "emv_terminal_utilized": "Yes",
+    "pep_official_status": "No",
+    "data_compromise_pci_investigation": "No",
+    "third_party_lender_contract": "No",
+    "data_storage_entity_cardholder_data_access": "No",
+    "provides_card_data_services_for_companies": "No",
+    "payment_facilitator_service_provider": "No"
   },
   "credit_card_pricing": {
     "annual_volume": "$15,000.00",

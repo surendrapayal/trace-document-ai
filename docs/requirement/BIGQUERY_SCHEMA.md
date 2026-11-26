@@ -130,44 +130,87 @@ Use `JSON_VALUE()` or `JSON_QUERY()` in SQL to extract fields.
 
 ---
 
-#### `merchant_details` — MerchantDetails
+#### `merchant_details` - MerchantDetails
 
-```json
+`json
 {
-  "business_type": "Retail",
-  "ownership_type": "LLC",
+  "business_type": "Private",
+  "ownership_type": "LLC Corporation",
   "tax_id": "XX-XXXXXXX",
-  "services": "Card Present",
-  "card_acceptance": "Visa, Mastercard, Discover, Amex",
-  "statement_type": "Online",
-  "new_existing_business": "Existing",
-  "length_in_business": "5 years",
-  "number_of_terminals": 2,
-  "deposit_method": "ACH",
-  "dispute_letter_mailing": "Yes",
-  "dispute_letter_electronic": "No",
-  "pci_compliant": true
+  "services": "Shoes-Retail",
+  "card_acceptance": "All Cards Accepted",
+  "statement_type_mailing": "Standard/DBA",
+  "new_or_existing_business": "Open-New to Card",
+  "length_in_business": "< 1 year",
+  "number_of_terminals": 1,
+  "deposit_method": "Standard",
+  "dispute_letter_mailing": "DBA",
+  "dispute_letter_electronic": "Email",
+  "language_preference": "English",
+  "tax_id_is_signer_ssn": "No",
+  "home_based_business": "No",
+  "bankruptcy_status": "No",
+  "site_inspected": "No",
+  "business_signage_present": "Yes",
+  "inventory_sufficient": "Yes",
+  "use_fulfillment_house": "No",
+  "additional_locations": "No",
+  "partner_referral_info": "No",
+  "pci_compliant": "Yes",
+  "pci_dss_maintained": "Yes",
+  "notify_pos_changes": "Yes",
+  "third_party_gateway": "No",
+  "qir_utilized": "Yes",
+  "stores_sensitive_auth_data": "No",
+  "emv_terminal_utilized": "Yes",
+  "pep_official_status": "No",
+  "data_compromise_pci_investigation": "No",
+  "third_party_lender_contract": "No",
+  "data_storage_entity_cardholder_data_access": "No",
+  "provides_card_data_services_for_companies": "No",
+  "payment_facilitator_service_provider": "No"
 }
-```
+`
 
 | Field | Type | Description |
 |---|---|---|
-| `business_type` | string\|null | e.g. Retail, Restaurant, Non-Profit |
-| `ownership_type` | string\|null | e.g. LLC, Sole Proprietor, Corporation |
+| `business_type` | string\|null | e.g. Private, Retail, Non-Profit |
+| `ownership_type` | string\|null | e.g. LLC Corporation, Tax Exempt |
 | `tax_id` | string\|null | EIN / Tax ID (may be masked by DLP) |
-| `services` | string\|null | Services offered |
+| `services` | string\|null | Business category |
 | `card_acceptance` | string\|null | Card brands accepted |
-| `statement_type` | string\|null | Online or Paper |
-| `new_existing_business` | string\|null | New or Existing |
-| `length_in_business` | string\|null | Years in business |
+| `statement_type_mailing` | string\|null | e.g. Standard/DBA |
+| `new_or_existing_business` | string\|null | e.g. Open-New to Card, Switching to Heartland |
+| `length_in_business` | string\|null | e.g. < 1 year, > 15 years |
 | `number_of_terminals` | integer\|null | Terminal count |
-| `deposit_method` | string\|null | ACH or Check |
-| `dispute_letter_mailing` | string\|null | Mailing preference |
-| `dispute_letter_electronic` | string\|null | Electronic preference |
-| `pci_compliant` | boolean\|null | PCI compliance status |
+| `deposit_method` | string\|null | e.g. Standard |
+| `dispute_letter_mailing` | string\|null | e.g. DBA |
+| `dispute_letter_electronic` | string\|null | e.g. Email |
+| `language_preference` | string\|null | e.g. English, Spanish |
+| `tax_id_is_signer_ssn` | string\|null | Yes / No |
+| `home_based_business` | string\|null | Yes / No |
+| `bankruptcy_status` | string\|null | Yes / No |
+| `site_inspected` | string\|null | Yes / No |
+| `business_signage_present` | string\|null | Yes / No |
+| `inventory_sufficient` | string\|null | Yes / No |
+| `use_fulfillment_house` | string\|null | Yes / No |
+| `additional_locations` | string\|null | Yes / No |
+| `partner_referral_info` | string\|null | Yes / No |
+| `pci_compliant` | string\|null | Yes / No |
+| `pci_dss_maintained` | string\|null | Yes / No |
+| `notify_pos_changes` | string\|null | Yes / No |
+| `third_party_gateway` | string\|null | Yes / No |
+| `qir_utilized` | string\|null | Yes / No |
+| `stores_sensitive_auth_data` | string\|null | Yes / No |
+| `emv_terminal_utilized` | string\|null | Yes / No |
+| `pep_official_status` | string\|null | Yes / No |
+| `data_compromise_pci_investigation` | string\|null | Yes / No |
+| `third_party_lender_contract` | string\|null | Yes / No |
+| `data_storage_entity_cardholder_data_access` | string\|null | Yes / No |
+| `provides_card_data_services_for_companies` | string\|null | Yes / No |
+| `payment_facilitator_service_provider` | string\|null | Yes / No |
 
 ---
-
 #### `credit_card_pricing` — CreditCardPricing
 
 ```json
