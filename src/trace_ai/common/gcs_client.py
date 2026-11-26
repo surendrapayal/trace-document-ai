@@ -39,6 +39,25 @@ def blob_exists(bucket_name: str, blob_name: str) -> bool:
     return _client.bucket(bucket_name).blob(blob_name).exists()
 
 
+def delete_blob(bucket_name: str, blob_name: str) -> None:
+    _client.bucket(bucket_name).blob(blob_name).delete()
+    log("GCS blob deleted", severity="DEBUG", bucket=bucket_name, blob=blob_name)
+
+
+def copy_blob(src_bucket: str, src_blob: str, dst_bucket: str, dst_blob: str) -> str:
+    source = _client.bucket(src_bucket).blob(src_blob)
+    dest_bucket = _client.bucket(dst_bucket)
+    _client.copy_blob(source, dest_bucket, dst_blob)
+    log("GCS blob copied", severity="DEBUG", src=src_blob, dst=dst_blob)
+    return f"gs://{dst_bucket}/{dst_blob}"
+
+
+def move_blob(src_bucket: str, src_blob: str, dst_bucket: str, dst_blob: str) -> str:
+    uri = copy_blob(src_bucket, src_blob, dst_bucket, dst_blob)
+    delete_blob(src_bucket, src_blob)
+    return uri
+
+
 def list_blobs(bucket_name: str, prefix: str = "") -> list[str]:
     blobs = [b.name for b in _client.list_blobs(bucket_name, prefix=prefix)]
     log("GCS list blobs", severity="DEBUG", bucket=bucket_name, prefix=prefix, count=len(blobs))

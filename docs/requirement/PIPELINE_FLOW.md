@@ -7,10 +7,10 @@ Detailed stage-by-stage reference for the contract processing pipeline defined i
 ## Overview
 
 ```
-Local PDF / GCS URI
+GCS landing/ zone  (user drops PDFs here)
         │
         ▼
-[Stage 0] Ingestion          upload_handler.py       → GCS raw zone
+[Stage 0] Ingestion          upload_handler.py       → GCS raw zone  (via REST trigger or CLI)
         │
         ▼
 [Stage 1] Document AI OCR    document_ai_client.py   → ExtractionResult       CLI: --stage ocr
@@ -43,7 +43,20 @@ Each stage from 1–7 can be run individually via `--stage`. See [Running Indivi
 
 ## Running the Pipeline
 
-**Process a local PDF (upload + process in one command):**
+**Trigger pipeline via REST API (recommended — landing zone pattern):**
+```bash
+# 1. Drop PDF(s) into GCS landing zone
+gsutil cp /path/to/contract.pdf gs://<GCS_BUCKET>/landing/
+
+# 2. Call trigger endpoint — scans landing/, moves PDFs to raw/, starts pipeline
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-key"
+
+# 3. Poll for result using contract_id from trigger response
+curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A1B2C3D4E5F6
+```
+
+**Process a local PDF directly (CLI):**
 ```bash
 python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 ```
@@ -143,26 +156,38 @@ python -m trace_ai.pipeline --stage deliver \
 
 ## Stage 0 — Ingestion
 
-**Module**: `ingestion/upload_handler.py`  
-**Triggered when**: `--local-pdf` flag is passed to `pipeline.py`; skipped when `--gcs-uri` is used directly.
+**Module**: `ingestion/upload_handler.py`
+**Triggered by**: `POST /api/v1/pipeline/trigger` (landing zone pattern) or `--local-pdf` CLI flag.
 
-**What it does**:
+**Two ingestion paths**:
+
+| Path | Function | Source |
+|---|---|---|
+| Landing zone (REST trigger) | `upload_contract_from_gcs(landing_blob)` | PDF already in `gs://<bucket>/landing/` |
+| Local file (CLI) | `upload_contract(local_path)` | PDF on local disk |
+
+**`upload_contract_from_gcs()` — landing zone path**:
+- Downloads PDF bytes from `landing/` to compute SHA256 hash
+- Checks for duplicates via `get_contract_by_hash()` when `DUPLICATE_CHECK_ENABLED=true`
+- Generates `contract_id` as `CNT-<12-char hex>`
+- Moves blob: copies to `raw/contracts/<contract_id>/<filename>.pdf`, then deletes from `landing/`
+- Returns `{ contract_id, gcs_uri, file_size_bytes, file_hash }`
+- If duplicate detected: raises `ValueError`, blob is NOT deleted from `landing/`
+
+**`upload_contract()` — local file path**:
 - Validates file exists, has `.pdf` extension, and is ≤ 50 MB
 - Computes SHA256 `file_hash` of the PDF bytes
-- When `DUPLICATE_CHECK_ENABLED=true` — queries `get_contract_by_hash()` and raises `ValueError` if the file was already processed, including the existing `contract_id` and status in the error message
+- When `DUPLICATE_CHECK_ENABLED=true` — queries `get_contract_by_hash()` and raises `ValueError` if the file was already processed
 - Generates `contract_id` as `CNT-<12-char hex>` if not provided
 - Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/<contract_id>/<filename>`
 
-**Input**: local file path, optional `contract_id`  
-**Output**: `{ contract_id, gcs_uri, file_size_bytes, file_hash }`
-
-**Folder support**: `--local-pdf folder/` uploads all `*.pdf` files sequentially. Each file runs independently — failures are captured per-file and the batch continues.
+**Folder support** (CLI only): `--local-pdf folder/` uploads all `*.pdf` files sequentially. Each file runs independently — failures are captured per-file and the batch continues.
 
 **Duplicate behaviour**:
 
 | `DUPLICATE_CHECK_ENABLED` | Duplicate file | Behaviour |
 |---|---|---|
-| `true` (default) | Same file re-submitted | Raises `ValueError` with existing `contract_id` — upload blocked |
+| `true` (default) | Same file re-submitted | Raises `ValueError` with existing `contract_id` — upload blocked, file stays in `landing/` |
 | `false` | Same file re-submitted | Proceeds — new `contract_id` generated, file reprocessed |
 
 ---

@@ -75,7 +75,8 @@ trace-document-ai/
 │       │   │   ├── queue.py
 │       │   │   ├── review.py
 │       │   │   ├── decisions.py
-│       │   │   └── contracts.py
+│       │   │   ├── contracts.py
+│       │   │   └── pipeline.py
 │       │   └── templates/
 │       │       ├── queue.html
 │       │       ├── review.html
@@ -139,7 +140,7 @@ Shared utilities used across all modules.
 
 | File | Responsibility |
 |------|----------------|
-| `gcs_client.py` | Shared helper for GCS upload, download, upload_json, download_json, blob_exists, list_blobs across all zones. |
+| `gcs_client.py` | Shared helper for GCS upload, download, upload_json, download_json, blob_exists, list_blobs, copy_blob, move_blob, delete_blob across all zones. |
 | `logger.py` | Structured JSON logger with MDC context (`contextvars`). Emits one JSON line per log call to stdout always, and optionally to a rotating file when `LOG_TO_FILE=true`. No GCP dependency. |
 
 GCP Services used: `GCS`
@@ -152,7 +153,7 @@ Handles contract file validation and upload to GCS Raw Zone. Called separately b
 
 | File | Responsibility |
 |------|----------------|
-| `upload_handler.py` | Validates file type (PDF only), size (≤50MB). Computes SHA256 `file_hash` and checks for duplicates via `get_contract_by_hash()` when `DUPLICATE_CHECK_ENABLED=true`. Uploads to `gs://<GCS_BUCKET>/<GCS_RAW_PREFIX>/contracts/`. Returns `contract_id`, `gcs_uri`, `file_size_bytes`, `file_hash`. |
+| `upload_handler.py` | Validates file type (PDF only), size (≤50MB). Computes SHA256 `file_hash` and checks for duplicates via `get_contract_by_hash()` when `DUPLICATE_CHECK_ENABLED=true`. `upload_contract()` uploads a local PDF to `raw/`. `upload_contract_from_gcs()` moves a PDF from `landing/` to `raw/` (copy + delete) — used by the pipeline trigger endpoint. Returns `contract_id`, `gcs_uri`, `file_size_bytes`, `file_hash`. |
 
 GCP Services used: `Google Cloud Storage`
 
@@ -270,6 +271,7 @@ FastAPI + Jinja2 web application for human-in-the-loop (HITL) contract review. D
 | `routes/review.py` | `GET /review/{id}` -- renders contract detail. `POST /review/{id}` -- records approve/reject decision, writes to GCS if approved, triggers webhook. |
 | `routes/decisions.py` | `GET /approved` -- lists all approved contracts. `GET /rejected` -- lists all rejected contracts. Both render decisions.html. |
 | `routes/contracts.py` | `GET /api/v1/contracts/{id}` -- fetch single contract as JSON. `GET /api/v1/contracts?status=...` -- list contracts by status. `GET /api/v1/contracts/status/stats` -- breakdown by status. Auth via `X-API-Key` when `REST_API_KEY` is set. |
+| `routes/pipeline.py` | `POST /api/v1/pipeline/trigger` -- scans `landing/` zone for PDFs, moves each to `raw/`, fires pipeline per contract as a background task. Returns 202 with list of accepted contract IDs. Auth via `X-API-Key` when `REST_API_KEY` is set. |
 | `templates/queue.html` | Reviewer queue UI -- lists pending contracts with confidence score badges. |
 | `templates/review.html` | Contract detail UI -- all sections displayed, approve/reject form at bottom. |
 | `templates/decisions.html` | Shared template for approved and rejected contract lists -- shows reviewer, notes, reviewed_at. |
@@ -325,7 +327,7 @@ Everything under `src/trace_ai/` — Python modules implementing business logic 
 
 | Component | Tool | Why Infra |
 |---|---|---|
-| GCS bucket creation (single bucket with raw / processing / curated / kb prefixes) | Terraform | Resource provisioning |
+| GCS bucket creation (single bucket with landing / raw / processing / curated / kb prefixes) | Terraform | Resource provisioning |
 | Eventarc trigger configuration | Terraform | GCP event binding |
 | Document AI processor creation | Terraform | One-time GCP resource |
 | Vertex AI Vector Search index creation | Terraform | Index provisioning |
@@ -369,6 +371,7 @@ GCP_REGION=
 
 # GCS — single bucket, all data separated by prefix
 GCS_BUCKET=
+GCS_LANDING_PREFIX=landing
 GCS_RAW_PREFIX=raw
 GCS_PROCESSING_PREFIX=processing
 GCS_CURATED_PREFIX=curated
@@ -429,7 +432,11 @@ LOG_FILE_BACKUP_COUNT=3
 ## Data Flow Through Codebase
 
 ```
-ingestion/upload_handler.py          (separate — uploads PDF to GCS raw)
+User drops PDF → gs://<GCS_BUCKET>/landing/
+        ↓
+POST /api/v1/pipeline/trigger  (review_app/routes/pipeline.py)
+        ↓
+ingestion/upload_handler.py  upload_contract_from_gcs()  → moves PDF to GCS raw/
         ↓
 pipeline.py starts from GCS URI
         ↓
@@ -464,7 +471,11 @@ python scripts/create_index.py
 # Upload RAG seed documents to GCS KB bucket under documents/ then index
 python -m trace_ai.knowledge_base.kb_indexer
 
-# Upload a contract PDF and process it
+# Drop a PDF into GCS landing zone and trigger via REST API
+gsutil cp contract.pdf gs://<GCS_BUCKET>/landing/
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger -H "X-API-Key: your-key"
+
+# Upload a contract PDF and process it directly (CLI)
 python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 
 # Process all PDFs in a local folder

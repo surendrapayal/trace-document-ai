@@ -288,6 +288,80 @@ curl "http://localhost:8080/api/v1/contracts?status=Review%20Required"
 
 ---
 
+### 9. POST /api/v1/pipeline/trigger
+
+Scans the GCS `landing/` zone for PDF files, moves each one to `raw/`, and starts the full pipeline for each contract as a background task. Returns `202 Accepted` immediately.
+
+**Request body**: None required.
+
+**Headers**:
+- `X-API-Key` -- required only when `REST_API_KEY` is set in `.env`
+
+```bash
+# Trigger pipeline (no body needed)
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger
+
+# With auth enabled
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-secret-key"
+```
+
+**What happens**:
+1. Lists all `.pdf` files under `gs://<GCS_BUCKET>/landing/`
+2. For each PDF: downloads bytes to compute SHA256 hash, checks for duplicates, moves blob to `raw/contracts/<CNT-XXX>/`, deletes from `landing/`
+3. Fires `pipeline.run()` for each contract as a FastAPI `BackgroundTask`
+4. Returns `202` immediately with the list of accepted contracts
+
+**Response** `202 Accepted` -- PDFs found:
+```json
+{
+  "accepted": [
+    {
+      "contract_id": "CNT-A1B2C3D4E5F6",
+      "gcs_uri": "gs://my-bucket/raw/contracts/CNT-A1B2C3D4E5F6/contract.pdf"
+    }
+  ],
+  "skipped": [],
+  "count": 1,
+  "message": "1 pipeline(s) started. Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
+}
+```
+
+**Response** `202 Accepted` -- no PDFs in landing:
+```json
+{
+  "accepted": [],
+  "count": 0,
+  "message": "No PDFs found in landing zone."
+}
+```
+
+**Response** `202 Accepted` -- with skipped duplicates:
+```json
+{
+  "accepted": [{"contract_id": "CNT-A1B2C3D4E5F6", "gcs_uri": "gs://..."}],
+  "skipped": [{"blob": "landing/duplicate.pdf", "reason": "Duplicate contract detected -- already processed as CNT-XXXX"}],
+  "count": 1,
+  "message": "1 pipeline(s) started. Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
+}
+```
+
+**Skipped files** are not deleted from `landing/` -- they remain for manual inspection.
+
+**Poll for result** after triggering:
+```bash
+curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A1B2C3D4E5F6
+# extraction_status will be "Pending" while running, then "Approved" / "Review Required" / "Rejected"
+```
+
+**Error responses**:
+
+| Status | Condition |
+|---|---|
+| `401 Unauthorized` | Invalid or missing API key (when auth is enabled) |
+
+---
+
 ## Endpoint Summary
 
 | Method | Path | Auth | Description |
@@ -298,6 +372,7 @@ curl "http://localhost:8080/api/v1/contracts?status=Review%20Required"
 | `POST` | `/review/{contract_id}` | No | Submit Approve/Reject decision |
 | `GET` | `/approved` | No | HTML list of all approved contracts (browser) |
 | `GET` | `/rejected` | No | HTML list of all rejected contracts (browser) |
+| `POST` | `/api/v1/pipeline/trigger` | Optional | Scan `landing/` zone, move PDFs to `raw/`, start pipeline per contract |
 | `GET` | `/api/v1/contracts/{contract_id}` | Optional | Fetch single contract as JSON |
 | `GET` | `/api/v1/contracts?status=...` | Optional | List contracts by status as JSON |
 | `GET` | `/api/v1/contracts/status/stats` | Optional | Breakdown of contracts by status |

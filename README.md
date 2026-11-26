@@ -10,8 +10,9 @@ TRACE ingests contract PDFs, extracts structured data using Document AI + Vertex
 
 **Pipeline stages:**
 ```
-Upload PDF → Document AI OCR → Cloud DLP (PII masking) → RAG context (Vector Search)
-  → Gemini extraction (7 prompts) → Normalize (Pydantic) → LLM Judge → Route
+Drop PDF → GCS landing/  →  POST /api/v1/pipeline/trigger
+  → Move to raw/  →  Document AI OCR  →  Cloud DLP (PII masking)  →  RAG context (Vector Search)
+  → Gemini extraction (7 prompts)  →  Normalize (Pydantic)  →  LLM Judge  →  Route
       ├── score ≥ 0.85  → Approved   → GCS Curated Zone → Webhook (if enabled)
       ├── score 0.60–0.85 → Review Required → FastAPI review app → Webhook on approval
       └── score < 0.60  → Rejected   → logged, manual intervention
@@ -96,7 +97,8 @@ gcloud storage buckets create gs://<GCS_BUCKET> --location=<GCP_REGION>
 All data is stored inside this single bucket under separate prefixes:
 ```
 gs://<GCS_BUCKET>/
-    raw/contracts/<contract_id>/<file>.pdf
+    landing/                                  ← drop PDFs here to trigger pipeline
+    raw/contracts/<contract_id>/<file>.pdf    ← PDFs moved here from landing/
     processing/
     curated/contracts/<contract_id>/output.json
     kb/documents/
@@ -128,12 +130,29 @@ python -m trace_ai.knowledge_base.kb_indexer
 
 ## Running the Pipeline
 
-**Process a local PDF (upload + process in one command):**
+**Recommended — drop PDF into GCS landing zone and trigger via REST API:**
+```bash
+# 1. Start the review app
+uvicorn trace_ai.review_app.main:app --reload --port 8080
+
+# 2. Drop PDF(s) into the landing zone
+gsutil cp /path/to/contract.pdf gs://<GCS_BUCKET>/landing/
+
+# 3. Trigger the pipeline (scans landing/, processes all PDFs found)
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-key"
+# Response includes contract_id(s) to poll for status
+
+# 4. Poll for result
+curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A1B2C3D4E5F6
+```
+
+**Process a local PDF directly (CLI):**
 ```bash
 python -m trace_ai.pipeline --local-pdf /path/to/contract.pdf
 ```
 
-**Process a PDF already in GCS:**
+**Process a PDF already in GCS raw zone:**
 ```bash
 python -m trace_ai.pipeline --gcs-uri gs://<GCS_RAW_BUCKET>/contracts/CNT-XXX/contract.pdf --contract-id CNT-XXX
 ```
@@ -217,7 +236,7 @@ python -m trace_ai.pipeline --stage deliver \
 
 ## Review App
 
-Start the HITL review app for contracts routed to `Review Required`:
+Start the HITL review app (also serves the pipeline trigger REST API):
 ```bash
 uvicorn trace_ai.review_app.main:app --reload --port 8080
 ```
@@ -251,11 +270,15 @@ WEBHOOK_SECRET=your-bearer-token
 - Failure is logged as ERROR but never fails the pipeline
 - **Testing locally**: set `WEBHOOK_URL=https://webhook.site/<your-id>` to inspect payloads in real time
 
-### REST API (pull)
+### REST API (pull + trigger)
 
-Third party systems can pull contract data on demand. Start the review app and use:
+Start the review app and use:
 
 ```bash
+# Trigger pipeline (scans landing/ zone)
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-key"
+
 # Fetch a single contract
 curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A3F9B2C1D4E5
 
@@ -265,8 +288,10 @@ curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Rev
 
 | Endpoint | Description |
 |---|---|
+| `POST /api/v1/pipeline/trigger` | Scan `landing/` zone and start pipeline for each PDF found |
 | `GET /api/v1/contracts/{contract_id}` | Fetch a single contract by ID |
-| `GET /api/v1/contracts?status=Review Required` | List all contracts pending human review |
+| `GET /api/v1/contracts?status=...` | List contracts by status |
+| `GET /api/v1/contracts/status/stats` | Breakdown of contracts by status |
 
 - Auth via `X-API-Key` header. Set `REST_API_KEY` in `.env`. Leave empty to disable auth (dev only).
 - Interactive Swagger docs at [http://localhost:8080/docs](http://localhost:8080/docs)
@@ -297,8 +322,8 @@ trace-document-ai/
 │   ├── normalization/          # Pydantic ContractRecord schema + mapper
 │   ├── validation/             # LLM judge + confidence scorer
 │   ├── delivery/               # GCS writer + storage backend (Firestore or BigQuery) + webhook
-│   ├── review_app/             # FastAPI + Jinja2 HITL review UI + REST API (/api/v1/contracts)
-│   │   ├── routes/             # queue.py, review.py, decisions.py, contracts.py
+│   ├── review_app/             # FastAPI + Jinja2 HITL review UI + REST API
+│   │   ├── routes/             # queue.py, review.py, decisions.py, contracts.py, pipeline.py
 │   │   └── templates/          # queue.html, review.html, decisions.html
 │   └── knowledge_base/         # Vector Search indexer
 ├── scripts/
@@ -317,6 +342,7 @@ trace-document-ai/
 | Decision | Choice | Reason |
 |---|---|---|
 | Orchestration | Python `pipeline.py` | Direct, debuggable -- no Cloud Workflows overhead for POC |
+| Pipeline trigger | GCS landing zone + REST API | Drop PDF → call trigger → pipeline starts. Ready for Eventarc automation later |
 | LLM | Vertex AI Gemini 1.5 Pro | Best-in-class extraction, native GCP, JSON mode |
 | RAG | Vertex AI Vector Search | Native GCP, no extra infra, integrates with Embeddings API |
 | Operational store | Firestore (default) or BigQuery | Configurable via `STORAGE_BACKEND` -- Firestore for production, BigQuery for POC |
@@ -335,8 +361,8 @@ See `.env.example` for the full list. Key variables:
 
 | Variable | Description |
 |---|---|
-| `GCP_PROJECT_ID` | GCP project ID |
-| `GCP_REGION` | GCP region e.g. `us-central1` |
+| `GCS_BUCKET` | GCS bucket name (single bucket for all zones) |
+| `GCS_LANDING_PREFIX` | Landing zone prefix -- default: `landing` |
 | `DOCUMENT_AI_FORM_PROCESSOR_ID` | Form Parser processor ID from GCP console |
 | `VERTEX_GEMINI_MODEL` | Default: `gemini-1.5-pro` |
 | `VERTEX_VECTOR_SEARCH_INDEX_ID` | From `scripts/create_index.py` output |

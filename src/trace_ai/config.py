@@ -9,6 +9,7 @@ class Config:
     GCP_REGION: str = os.environ["GCP_REGION"]
 
     GCS_BUCKET: str = os.environ["GCS_BUCKET"]
+    GCS_LANDING_PREFIX: str = os.getenv("GCS_LANDING_PREFIX", "landing")
     GCS_RAW_PREFIX: str = os.getenv("GCS_RAW_PREFIX", "raw")
     GCS_PROCESSING_PREFIX: str = os.getenv("GCS_PROCESSING_PREFIX", "processing")
     GCS_CURATED_PREFIX: str = os.getenv("GCS_CURATED_PREFIX", "curated")

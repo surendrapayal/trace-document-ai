@@ -9,8 +9,9 @@ All pipeline data lives in a **single GCS bucket** (`GCS_BUCKET`) separated into
 | Variable | Default | Description |
 |---|---|---|
 | `GCS_BUCKET` | _(required)_ | The single GCS bucket name. All zones live inside this bucket. e.g. `my-trace-ai-bucket` |
-| `GCS_RAW_PREFIX` | `raw` | Prefix for the raw landing zone — uploaded PDFs land here |
-| `GCS_PROCESSING_PREFIX` | `processing` | Prefix for OCR and DLP intermediate artifacts — not currently written by the pipeline (reserved for future use) |
+| `GCS_LANDING_PREFIX` | `landing` | Prefix for the landing zone — users drop PDFs here to trigger the pipeline via REST API |
+| `GCS_RAW_PREFIX` | `raw` | Prefix for the raw zone — PDFs are moved here from landing before processing begins |
+| `GCS_PROCESSING_PREFIX` | `processing` | Prefix for OCR and DLP intermediate artifacts |
 | `GCS_CURATED_PREFIX` | `curated` | Prefix for final validated JSON outputs — written only for Approved contracts |
 | `GCS_KB_PREFIX` | `kb` | Prefix for knowledge base documents and vector chunks used by RAG |
 
@@ -21,10 +22,13 @@ All pipeline data lives in a **single GCS bucket** (`GCS_BUCKET`) separated into
 ```
 gs://<GCS_BUCKET>/
 │
+├── landing/
+│   └── <filename>.pdf                  ← user drops PDFs here; consumed by POST /api/v1/pipeline/trigger
+│
 ├── raw/
 │   └── contracts/
 │       └── <contract_id>/
-│           └── <filename>.pdf          ← uploaded by upload_handler.py (Stage 0)
+│           └── <filename>.pdf          ← moved from landing/ by upload_contract_from_gcs() (Stage 0)
 │
 ├── processing/
 │   └── contracts/
@@ -48,15 +52,39 @@ gs://<GCS_BUCKET>/
 
 ## Zone-by-Zone Explanation
 
-### `raw/` — Landing Zone
+### `landing/` — Inbox Zone
+
+**Env var**: `GCS_LANDING_PREFIX` (default: `landing`)
+
+**Written by**: Users / external systems — drop PDFs here manually or via `gsutil`/GCS client
+
+**Path pattern**: `gs://<GCS_BUCKET>/landing/<filename>.pdf`
+
+**What lands here**: Raw PDFs waiting to be picked up by the pipeline trigger. This is the inbox — files sit here until `POST /api/v1/pipeline/trigger` is called.
+
+**Lifecycle**: When the trigger endpoint is called, each PDF in `landing/` is:
+1. Downloaded to compute SHA256 hash and check for duplicates
+2. Moved (copy + delete) to `raw/contracts/<contract_id>/<filename>.pdf`
+3. Deleted from `landing/` — clean inbox pattern
+
+If a file is a duplicate (same hash already processed), it is skipped and remains in `landing/` — it is not deleted. The trigger response includes a `skipped` list with the reason.
+
+**Example**:
+```
+gs://my-trace-ai-bucket/landing/CHETSHOESLLC.pdf
+```
+
+---
+
+### `raw/` — Raw Zone
 
 **Env var**: `GCS_RAW_PREFIX` (default: `raw`)
 
-**Written by**: `ingestion/upload_handler.py` (Stage 0)
+**Written by**: `ingestion/upload_handler.py` — `upload_contract_from_gcs()` moves PDFs from `landing/` here; `upload_contract()` uploads local PDFs directly here
 
 **Path pattern**: `gs://<GCS_BUCKET>/raw/contracts/<contract_id>/<filename>.pdf`
 
-**What lands here**: The original unmodified PDF uploaded by the user. This is the source of truth for the contract. Document AI reads the PDF directly from this path.
+**What lands here**: The original unmodified PDF. This is the durable source of truth for the contract. Document AI reads the PDF directly from this path.
 
 **Example**:
 ```
@@ -149,10 +177,14 @@ Text chunks produced by `kb_indexer.py`. Each document is split into 500-charact
 ## How a Contract Moves Through the Zones
 
 ```
-User uploads PDF
+User drops PDF into landing/
         │
         ▼
-gs://<GCS_BUCKET>/raw/contracts/<contract_id>/<file>.pdf
+POST /api/v1/pipeline/trigger
+        │
+        ▼
+gs://<GCS_BUCKET>/landing/<file>.pdf  →  move_blob()  →  gs://<GCS_BUCKET>/raw/contracts/<contract_id>/<file>.pdf
+(deleted from landing/)                                   (contract_id auto-generated)
         │
         │  Stage 1: Document AI reads PDF bytes from raw/
         │           writes ocr.json to processing/

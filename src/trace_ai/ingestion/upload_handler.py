@@ -2,7 +2,7 @@ import hashlib
 import os
 import uuid
 from pathlib import Path
-from trace_ai.common.gcs_client import upload
+from trace_ai.common.gcs_client import upload, download_bytes, move_blob
 from trace_ai.config import config
 from trace_ai.common.logger import log
 
@@ -18,6 +18,42 @@ def _compute_hash(local_path: str) -> str:
 def _raise(exc: Exception) -> None:
     log(str(exc), severity="ERROR")
     raise exc
+
+
+def upload_contract_from_gcs(landing_blob: str, contract_id: str | None = None) -> dict:
+    """Move a PDF from landing/ to raw/, compute hash, register contract."""
+    filename = landing_blob.split("/")[-1]
+    if not filename.lower().endswith(".pdf"):
+        raise ValueError(f"Only PDF files are supported. Got: {filename}")
+
+    pdf_bytes = download_bytes(config.GCS_BUCKET, landing_blob)
+
+    file_size = len(pdf_bytes)
+    if file_size > config.MAX_FILE_SIZE_BYTES:
+        raise ValueError(f"File exceeds {config.MAX_FILE_SIZE_BYTES // (1024 * 1024)}MB limit: {file_size} bytes")
+
+    file_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+    if config.DUPLICATE_CHECK_ENABLED:
+        from trace_ai.delivery.storage_backend import get_contract_by_hash
+        existing = get_contract_by_hash(file_hash)
+        if existing:
+            msg = (
+                f"Duplicate contract detected -- already processed as {existing['contract_id']} "
+                f"(status: {existing.get('extraction_status', 'unknown')}). "
+                f"Set DUPLICATE_CHECK_ENABLED=false to reprocess."
+            )
+            log(msg, severity="ERROR", file_hash=file_hash, existing_contract_id=existing["contract_id"])
+            raise ValueError(msg)
+
+    if not contract_id:
+        contract_id = f"CNT-{uuid.uuid4().hex[:12].upper()}"
+
+    raw_blob = f"{config.GCS_RAW_PREFIX}/contracts/{contract_id}/{filename}"
+    gcs_uri = move_blob(config.GCS_BUCKET, landing_blob, config.GCS_BUCKET, raw_blob)
+
+    log("Contract moved from landing to raw zone", gcs_uri=gcs_uri, file_size_bytes=file_size, file_hash=file_hash)
+    return {"contract_id": contract_id, "gcs_uri": gcs_uri, "file_size_bytes": file_size, "file_hash": file_hash}
 
 
 def upload_contract(local_path: str, contract_id: str | None = None) -> dict:

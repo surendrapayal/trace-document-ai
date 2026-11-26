@@ -361,7 +361,7 @@ The remaining `elif args.stage == "..."` blocks each validate their required fla
 ## 2. `upload_handler.py` — Stage 0 Ingestion
 
 **Location**: `src/trace_ai/ingestion/upload_handler.py`
-**Role**: Validates and uploads a local PDF to GCS raw zone. Generates `contract_id`.
+**Role**: Validates and ingests PDFs into GCS raw zone. Two paths: local file upload and GCS landing zone move.
 
 ---
 
@@ -370,25 +370,40 @@ import hashlib
 import os
 import uuid
 from pathlib import Path
-from trace_ai.common.gcs_client import upload
+from trace_ai.common.gcs_client import upload, download_bytes, move_blob
 from trace_ai.config import config
 from trace_ai.common.logger import log
 ```
-`hashlib` computes the SHA256 file hash for duplicate detection. `uuid` generates the unique contract ID. `upload` is the shared GCS helper. File size limit is read from `config.MAX_FILE_SIZE_BYTES` (default 50 MB, configurable via `MAX_FILE_SIZE_BYTES` env var in MB).
+`hashlib` computes the SHA256 file hash for duplicate detection. `uuid` generates the unique contract ID. `upload` and `move_blob` are the shared GCS helpers. `download_bytes` is used by `upload_contract_from_gcs()` to fetch PDF bytes from `landing/` for hash computation.
 
 ---
 
-### `_compute_hash(local_path) -> str`
+### `upload_contract_from_gcs(landing_blob, contract_id) -> dict`
+
+Used by `POST /api/v1/pipeline/trigger`. Moves a PDF from `landing/` to `raw/` without downloading to local disk.
 
 ```python
-def _compute_hash(local_path: str) -> str:
-    h = hashlib.sha256()
-    with open(local_path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+def upload_contract_from_gcs(landing_blob: str, contract_id: str | None = None) -> dict:
+    pdf_bytes = download_bytes(config.GCS_BUCKET, landing_blob)
 ```
-Computes a SHA256 hash of the PDF bytes in 64KB streaming chunks — memory usage stays flat regardless of file size. The two-argument `iter()` calls the lambda repeatedly until it returns `b""` (EOF). Returns a 64-character lowercase hex string e.g. `a3f9b2c1d4e5...`. Used for duplicate detection.
+Downloads the PDF bytes from `landing/` into memory. This is needed to compute the SHA256 hash for duplicate detection — GCS does not expose content hashes in a format we can use directly.
+
+```python
+    file_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+    if config.DUPLICATE_CHECK_ENABLED:
+        from trace_ai.delivery.storage_backend import get_contract_by_hash
+        existing = get_contract_by_hash(file_hash)
+        if existing:
+            raise ValueError(...)
+```
+Same duplicate check as `upload_contract()`. If a duplicate is detected, `ValueError` is raised and the blob is NOT deleted from `landing/` — it stays for manual inspection.
+
+```python
+    raw_blob = f"{config.GCS_RAW_PREFIX}/contracts/{contract_id}/{filename}"
+    gcs_uri = move_blob(config.GCS_BUCKET, landing_blob, config.GCS_BUCKET, raw_blob)
+```
+`move_blob()` is a copy + delete: copies the blob to `raw/contracts/<contract_id>/<filename>`, then deletes the original from `landing/`. This is the clean inbox pattern — after a successful trigger, `landing/` is empty.
 
 ---
 
