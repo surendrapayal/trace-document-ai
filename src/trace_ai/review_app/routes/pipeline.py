@@ -67,9 +67,11 @@ async def trigger_pipeline(
             log("Skipped landing blob", severity="WARNING", blob=blob, error=str(e))
             skipped.append({"blob": blob, "reason": str(e)})
 
+    ids = [a["contract_id"] for a in accepted]
+    ids_str = ids[0] if len(ids) == 1 else ", ".join(ids)
     return {
         "accepted": accepted,
         "skipped": skipped,
         "count": len(accepted),
-        "message": f"{len(accepted)} pipeline(s) started. Poll GET /api/v1/contracts/<contract_id> for status.",
+        "message": f"{len(accepted)} pipeline(s) started. Poll GET /api/v1/contracts/{ids_str} for status.",
     }
