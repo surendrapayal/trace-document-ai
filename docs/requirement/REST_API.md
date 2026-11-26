@@ -292,25 +292,41 @@ curl "http://localhost:8080/api/v1/contracts?status=Review%20Required"
 
 Scans the GCS `landing/` zone for PDF files, moves each one to `raw/`, and starts the full pipeline for each contract as a background task. Returns `202 Accepted` immediately.
 
-**Request body**: None required.
+**Request body**: Optional JSON.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `files` | `list[str]` | No | Filenames to process (e.g. `["contract_a.pdf"]`). Omit to process all PDFs in `landing/`. |
 
 **Headers**:
 - `X-API-Key` -- required only when `REST_API_KEY` is set in `.env`
 
 ```bash
-# Trigger pipeline (no body needed)
-curl -X POST http://localhost:8080/api/v1/pipeline/trigger
-
-# With auth enabled
+# Scan all PDFs in landing/ (no body needed)
 curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
   -H "X-API-Key: your-secret-key"
+
+# Trigger a single specific PDF
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"files": ["contract_a.pdf"]}'
+
+# Trigger multiple specific PDFs
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"files": ["contract_a.pdf", "contract_b.pdf"]}'
 ```
+
+`files` contains filenames only -- not full GCS paths. The `landing/` prefix is resolved internally.
 
 **What happens**:
 1. Lists all `.pdf` files under `gs://<GCS_BUCKET>/landing/`
-2. For each PDF: downloads bytes to compute SHA256 hash, checks for duplicates, moves blob to `raw/contracts/<CNT-XXX>/`, deletes from `landing/`
-3. Fires `pipeline.run()` for each contract as a FastAPI `BackgroundTask`
-4. Returns `202` immediately with the list of accepted contracts
+2. If `files` is provided, filters to only those filenames; unmatched names go directly to `skipped[]`
+3. For each matched PDF: downloads bytes to compute SHA256 hash, checks for duplicates, moves blob to `raw/contracts/<CNT-XXX>/`, deletes from `landing/`
+4. Fires `pipeline.run()` for each contract as a FastAPI `BackgroundTask`
+5. Returns `202` immediately with the list of accepted and skipped contracts
 
 **Response** `202 Accepted` -- PDFs found:
 ```json
@@ -327,20 +343,24 @@ curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
 }
 ```
 
-**Response** `202 Accepted` -- no PDFs in landing:
+**Response** `202 Accepted` -- no PDFs in landing (or none matched):
 ```json
 {
   "accepted": [],
+  "skipped": [],
   "count": 0,
   "message": "No PDFs found in landing zone."
 }
 ```
 
-**Response** `202 Accepted` -- with skipped duplicates:
+**Response** `202 Accepted` -- with skipped files:
 ```json
 {
   "accepted": [{"contract_id": "CNT-A1B2C3D4E5F6", "gcs_uri": "gs://..."}],
-  "skipped": [{"blob": "landing/duplicate.pdf", "reason": "Duplicate contract detected -- already processed as CNT-XXXX"}],
+  "skipped": [
+    {"blob": "landing/duplicate.pdf", "reason": "Duplicate contract detected -- already processed as CNT-XXXX"},
+    {"blob": "landing/missing.pdf", "reason": "Not found in landing zone"}
+  ],
   "count": 1,
   "message": "1 pipeline(s) started. Poll GET /api/v1/contracts/CNT-A1B2C3D4E5F6 for status."
 }

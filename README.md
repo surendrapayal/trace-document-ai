@@ -138,9 +138,15 @@ uvicorn trace_ai.review_app.main:app --reload --port 8080
 # 2. Drop PDF(s) into the landing zone
 gsutil cp /path/to/contract.pdf gs://<GCS_BUCKET>/landing/
 
-# 3. Trigger the pipeline (scans landing/, processes all PDFs found)
+# 3. Trigger the pipeline — all PDFs in landing/
 curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
   -H "X-API-Key: your-key"
+
+# Or trigger specific file(s) only
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"files": ["contract.pdf"]}'
 # Response includes contract_id(s) to poll for status
 
 # 4. Poll for result
@@ -275,9 +281,15 @@ WEBHOOK_SECRET=your-bearer-token
 Start the review app and use:
 
 ```bash
-# Trigger pipeline (scans landing/ zone)
+# Trigger pipeline (scans all PDFs in landing/ zone)
 curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
   -H "X-API-Key: your-key"
+
+# Trigger specific file(s) only
+curl -X POST http://localhost:8080/api/v1/pipeline/trigger \
+  -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"files": ["contract_a.pdf", "contract_b.pdf"]}'
 
 # Fetch a single contract
 curl -H "X-API-Key: your-key" http://localhost:8080/api/v1/contracts/CNT-A3F9B2C1D4E5
@@ -288,7 +300,7 @@ curl -H "X-API-Key: your-key" "http://localhost:8080/api/v1/contracts?status=Rev
 
 | Endpoint | Description |
 |---|---|
-| `POST /api/v1/pipeline/trigger` | Scan `landing/` zone and start pipeline for each PDF found |
+| `POST /api/v1/pipeline/trigger` | Scan `landing/` zone and start pipeline -- all PDFs or specific `files[]` |
 | `GET /api/v1/contracts/{contract_id}` | Fetch a single contract by ID |
 | `GET /api/v1/contracts?status=...` | List contracts by status |
 | `GET /api/v1/contracts/status/stats` | Breakdown of contracts by status |
